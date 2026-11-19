@@ -1,10 +1,10 @@
 package com.offerpilot.core.parser
 
 /**
- * 文字解析器（PRD 4.2）：金额、距离、时间。单位统一为加元 / 公里 / 分钟。
+ * Text parser (PRD 4.2): money, distance, duration. Units are CAD / km / minutes.
  *
- * 这里只做"从一段字符串中找出所有候选值"，不做"哪个才是订单报价"的判断——
- * 那是 [com.offerpilot.core.parser.OfferAdapter] 的职责，避免把第一个 "$" 当成报价。
+ * It only finds every candidate value in a string; deciding which one is the offer price is the job of
+ * [com.offerpilot.core.parser.OfferAdapter], so the first "$" is never blindly taken as the price.
  */
 object OfferParser {
 
@@ -12,22 +12,22 @@ object OfferParser {
 
     data class Match<T>(val value: T, val raw: String, val start: Int)
 
-    // 金额：$9 / $9.00 / CA$9.00 / CA $1,234.50 / $ 9
+    // Money: $9 / $9.00 / CA$9.00 / CA $1,234.50 / $ 9
     private val MONEY = Regex("""(?<![A-Za-z0-9])(?:CA|C|CAD)?\s?\$\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)(?![\d])""")
 
-    // 距离：29.92 km / 3.5km / 1.2 mi / 1,2 km（欧式小数逗号）
+    // Distance: 29.92 km / 3.5km / 1.2 mi / 1,2 km (European decimal comma)
     private val DISTANCE = Regex("""(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:[.,]\d+)?)\s?(km|kms|kilometers?|kilometres?|mi|miles?)(?![A-Za-z])""", RegexOption.IGNORE_CASE)
 
     private val HOURS = Regex("""(\d+(?:[.,]\d+)?)\s?(h|hr|hrs|hour|hours)(?![A-Za-z])""", RegexOption.IGNORE_CASE)
     private val MINUTES = Regex("""(\d+(?:[.,]\d+)?)\s?(min|mins|minute|minutes)(?![A-Za-z])""", RegexOption.IGNORE_CASE)
 
-    /** 把所有空白（含换行、不间断空格）压成单个空格。 */
+    /** Collapses all whitespace (incl. newlines and non-breaking spaces) into single spaces. */
     fun normalize(text: String): String =
         text.replace(' ', ' ').replace(' ', ' ').replace(Regex("""\s+"""), " ").trim()
 
     /**
-     * 解析数字字符串。
-     * "1,234.5" → 1234.5；"1,234" → 1234；"29,92" → 29.92（单个逗号后非 3 位视为小数点）。
+     * Parses a number string.
+     * "1,234.5" → 1234.5; "1,234" → 1234; "29,92" → 29.92 (a single comma not followed by 3 digits is a decimal point).
      */
     fun parseNumber(raw: String): Double? {
         val s = raw.trim()
@@ -48,7 +48,7 @@ object OfferParser {
         val t = normalize(text)
         return MONEY.findAll(t).mapNotNull { m ->
             val raw = m.groupValues[1]
-            // "$1,23" 这种不是合法金额格式；带两位小数的欧式逗号也接受
+            // "$1,23" is not a valid money format; a European comma with two decimals is accepted
             val v = parseNumber(raw) ?: return@mapNotNull null
             val before = t.getOrNull(m.range.first - 1)
             val signed = if (before == '-' || before == '\u2212') -v else v
@@ -67,8 +67,8 @@ object OfferParser {
     }
 
     /**
-     * 解析时长。"1 hr 3 min" 这样的相邻组合会合并为一个值（63 分钟）。
-     * 同一段文本中不相邻的多个时长分别返回。
+     * Parses durations. Adjacent parts like "1 hr 3 min" are merged into one value (63 minutes).
+     * Non-adjacent durations in the same text are returned separately.
      */
     fun findDurationsMinutes(text: String): List<Match<Double>> {
         val t = normalize(text)
@@ -99,23 +99,23 @@ object OfferParser {
     private fun isJoiner(between: String): Boolean =
         between.isBlank() || between.trim().lowercase() in setOf("and", "&", ",")
 
-    // ---------------- OCR 修正 ----------------
+    // ---------------- OCR repair ----------------
 
-    /** 单独一行的报价，如 "CA$6.78"、OCR 误读的 "CA$678"、"CAS6 78"。 */
+    /** A price on its own line, e.g. "CA$6.78", OCR-misread "CA$678", "CAS6 78". */
     private val OCR_PRICE_LINE = Regex("""^\s*(CA|C|CAD)?\s?[${'$'}S]\s?(\d{1,4})(?:[\s.,·•:'](\d{2}))?\s*$""", RegexOption.IGNORE_CASE)
 
     /**
-     * 修正 OCR 对报价行的常见误读（真机：Uber 报价一律显示两位小数，如 "CA$5.05"）。
-     *  - 小数点丢失："CA$678" → "CA$6.78"（3–4 位整数，且整行只有这个金额）
-     *  - 小数点被识别成空格 / 逗号 / 中点："CA$6 78" → "CA$6.78"
-     *  - "$" 被识别成 "S"："CAS6.78" → "CA$6.78"（仅限带 CA 前缀的独立金额行）
-     * 返回 (修正后的文字, 是否做了修正)。不是独立金额行的文字原样返回。
+     * Repairs common OCR misreads of the price line (on real devices Uber shows prices like "CA$5.05" or "CA$6").
+     *  - lost decimal point: "CA$678" → "CA$6.78" (3–4 digit integer and the line holds only this amount)
+     *  - decimal point read as space / comma / middle dot: "CA$6 78" → "CA$6.78"
+     *  - "$" read as "S": "CAS6.78" → "CA$6.78" (only for standalone amount lines with a CA prefix)
+     * Returns (repaired text, whether anything was repaired). Lines that aren't a standalone amount are returned unchanged.
      */
     fun repairOcrPriceLine(line: String): Pair<String, Boolean> {
         val m = OCR_PRICE_LINE.matchEntire(line.trim()) ?: return line to false
         val prefix = m.groupValues[1]
         val symbol = line.trim().substring(m.groups[2]!!.range.first - 1).first { it == '$' || it == 'S' || it == 's' }
-        if (symbol != '$' && prefix.isEmpty()) return line to false // 单独的 "S12" 不当作金额
+        if (symbol != '$' && prefix.isEmpty()) return line to false // a lone "S12" is not money
         val whole = m.groupValues[2]
         val cents = m.groupValues[3]
         val fixed = when {

@@ -1,5 +1,5 @@
-// 纯 Kotlin/JVM 模块：数据模型、解析器、收益规则、订单跟踪。
-// 不依赖 Android，可在任何 JVM 上单元测试；Uber 改版时只需改 parser/adapter。
+// Pure Kotlin/JVM module: data model, parser, earnings rules, offer tracking.
+// No Android dependency, unit-testable on any JVM; when Uber changes its UI only parser/adapter need updating.
 plugins {
     id("org.jetbrains.kotlin.jvm")
 }

@@ -1,12 +1,12 @@
 package com.offerpilot.core.model
 
 /**
- * 判断结果：四档（屏幕边缘发光颜色）+ 无法判断。
- *  （比值 = 不含小费价 ÷ 达标价，达标价 = 车辆成本 + 期望净时薪 × 小时）
- *  - LOSS 红：比值 < 1，不含小费价不够期望净时薪 + 车辆成本（连车辆成本都不够时语音说"亏本"）
- *  - MIN_WAGE 黄：1 ≤ 比值 < goodRatio，刚好达标
- *  - GOOD 绿：goodRatio ≤ 比值 < greatRatio，比较赚
- *  - GREAT 蓝：比值 ≥ greatRatio，无脑接
+ * Verdict: four tiers (edge glow colour) + unknown.
+ *  (ratio = tip-free pay ÷ required pay, required pay = vehicle cost + target net hourly × hours)
+ *  - LOSS red: ratio < 1, tip-free pay doesn't cover target net hourly + vehicle cost (spoken as "亏本" when even vehicle cost isn't covered)
+ *  - MIN_WAGE yellow: 1 ≤ ratio < goodRatio, just meets the target
+ *  - GOOD green: goodRatio ≤ ratio < greatRatio, pays well
+ *  - GREAT blue: ratio ≥ greatRatio, must-take
  */
 enum class Verdict(val label: String, val shortLabel: String, val speech: String) {
     LOSS("不达标", "不达标", "不达标"),
@@ -16,7 +16,7 @@ enum class Verdict(val label: String, val shortLabel: String, val speech: String
     UNKNOWN("无法判断", "无法判断", "订单信息不完整"),
 }
 
-/** 无法判断的原因。 */
+/** Why no verdict could be given. */
 enum class UnknownReason(val description: String) {
     MISSING_PAYOUT("价格读取失败"),
     MISSING_DISTANCE("距离读取失败"),
@@ -29,25 +29,25 @@ enum class UnknownReason(val description: String) {
 
 data class EvaluationResult(
     val verdict: Verdict,
-    /** offerPrice / requiredPrice；无法判断时为 null。 */
+    /** basePay / requiredPrice; null when there is no verdict. */
     val ratio: Double?,
     val requiredPrice: Double?,
     val distanceRequirement: Double?,
     val timeRequirement: Double?,
-    /** 估算车辆成本（油费 + 车损），仅展示用。 */
+    /** Estimated vehicle cost (fuel + wear), display only. */
     val vehicleCost: Double?,
-    /** 报价 - 车辆成本，仅展示用。 */
+    /** Payout minus vehicle cost, display only. */
     val netAfterVehicleCost: Double?,
-    /** 不含小费价 = 显示价 × tipFreeShare。 */
+    /** Tip-free pay = shown price × tipFreeShare. */
     val basePay: Double? = null,
-    /** 预计净时薪 =（不含小费价 - 车辆成本）/ 小时（含返程时间）。 */
+    /** Estimated net hourly = (tip-free pay − vehicle cost) / hours (including return trip). */
     val netHourly: Double? = null,
-    /** 报价低于用户设置的最低订单金额。 */
+    /** Payout is below the user's minimum order amount. */
     val belowMinimumOrder: Boolean = false,
     val unknownReasons: List<UnknownReason> = emptyList(),
 ) {
     val isConclusive: Boolean get() = verdict != Verdict.UNKNOWN
 }
 
-/** 可选的返程估算（PRD 6.2，第一版不会自动推断，只在用户/可靠来源提供时使用）。 */
+/** Optional return-trip estimate (PRD 6.2; v1 never infers it, only used when the user or a reliable source provides it). */
 data class ReturnTrip(val km: Double, val minutes: Double)

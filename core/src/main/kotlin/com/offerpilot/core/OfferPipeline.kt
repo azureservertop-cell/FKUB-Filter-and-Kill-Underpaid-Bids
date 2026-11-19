@@ -9,7 +9,7 @@ import com.offerpilot.core.tracking.OfferTracker
 import com.offerpilot.core.tracking.TrackerEvent
 
 /**
- * 识别 → 跟踪 → 计算 的组合。显示与动作由 Android 层订阅 [PipelineOutput] 自行处理。
+ * Recognize → track → evaluate. Display and actions are handled by the Android layer from [PipelineOutput].
  */
 class OfferPipeline(
     private val adapter: OfferAdapter,
@@ -18,7 +18,7 @@ class OfferPipeline(
 ) {
     fun process(screen: ScreenText, now: Long): PipelineOutput = processResult(adapter.extract(screen), now)
 
-    /** 已经由适配器处理过的结果（例如调用方需要先看节点结果再决定是否走 OCR）。 */
+    /** For a result the adapter already produced (e.g. the caller checks the node result before deciding on OCR). */
     fun processResult(adapted: AdapterResult, now: Long): PipelineOutput {
         return when (val ev = tracker.onFrame(adapted, now)) {
             is TrackerEvent.NewOffer -> PipelineOutput.Show(ev.offer, evaluator.evaluate(ev.offer, now), announce = !ev.suppressAnnouncement)

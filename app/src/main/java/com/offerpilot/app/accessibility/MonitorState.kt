@@ -19,13 +19,13 @@ data class MonitorStatus(
     val lastAdapterNote: String? = null,
     val lastSnapshotPath: String? = null,
     val snapshotCountdownUntil: Long? = null,
-    /** 持续抓取：正在录制的会话。 */
+    /** Continuous capture: the session currently being recorded. */
     val recording: RecordingStatus? = null,
 )
 
 data class RecordingStatus(val sessionName: String, val startedAt: Long, val count: Int, val maxCount: Int)
 
-/** 服务 → UI 的状态通道（进程内单例）。 */
+/** Service → UI state channel (in-process singleton). */
 object MonitorState {
     private val _status = MutableStateFlow(MonitorStatus())
     val status: StateFlow<MonitorStatus> = _status.asStateFlow()

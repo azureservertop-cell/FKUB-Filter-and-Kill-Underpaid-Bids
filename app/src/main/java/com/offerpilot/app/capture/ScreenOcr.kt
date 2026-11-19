@@ -18,15 +18,15 @@ import com.offerpilot.core.model.TextNode
 import java.util.concurrent.Executor
 
 /**
- * OCR 兜底（PRD 2.2 第二优先级）。
+ * OCR fallback (PRD 2.2, second priority).
  *
- * Phase 0 真机快照证实：订单弹窗出现时，Uber Driver 把整个界面层从无障碍树中隐藏，
- * 报价 / 距离 / 时间无法从节点读取。此时：
- *   AccessibilityService.takeScreenshot() → 裁剪到 Uber 窗口区域 → ML Kit 本地文字识别
- *   → ScreenText(source = OCR) → 同一个 UberDriverAdapter。
+ * Phase 0 real-device snapshots confirmed: while an offer popup is up, Uber Driver hides its whole UI layer from the
+ * accessibility tree, so price / distance / time can't be read from nodes. In that case:
+ *   AccessibilityService.takeScreenshot() → crop to the Uber window → ML Kit on-device text recognition
+ *   → ScreenText(source = OCR) → the same UberDriverAdapter.
  *
- * 只在服务判断"疑似弹窗且节点读不到"时调用，有最小间隔，不做无间隔循环截图。
- * 截图只在内存中使用，识别完立即回收，不落盘。全程本地，不联网。
+ * Only called when the service suspects a hidden popup; rate-limited, never a tight screenshot loop.
+ * Screenshots stay in memory, are recycled right after recognition and never written to disk. Fully local, no network.
  */
 class ScreenOcr(
     private val service: AccessibilityService,
@@ -35,11 +35,11 @@ class ScreenOcr(
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     /**
-     * [onResult] 在 [executor] 上回调；失败时传 null。
+     * [onResult] is called on [executor]; null on failure.
      *
-     * Android 14+ 用 takeScreenshotOfWindow 只截 Uber 的窗口：不会截到本应用自己的悬浮提示
-     * （否则 "$5 / 3km" 这样的提示文字会被当成订单内容）以及其他应用的文字。
-     * 更早的版本截全屏后裁剪到 Uber 窗口区域。
+     * On Android 14+ takeScreenshotOfWindow captures only Uber's window, so our own overlay hint
+     * (otherwise text like "$5 / 3km" would be read as offer content) and other apps' text are excluded.
+     * Older versions take a full screenshot and crop it to the Uber window.
      */
     fun recognize(region: Rect, windowId: Int, packageName: String, onResult: (ScreenText?) -> Unit) {
         val takenAt = System.currentTimeMillis()
@@ -55,7 +55,7 @@ class ScreenOcr(
                         hw?.recycle()
                         result.hardwareBuffer.close()
                         val src = full ?: return onResult(null)
-                        // r：截图中要识别的区域；(ox, oy)：截图坐标 → 屏幕坐标的偏移
+                        // r: region of the screenshot to recognize; (ox, oy): screenshot → screen coordinate offset
                         val r: Rect
                         val ox: Int
                         val oy: Int
@@ -96,7 +96,7 @@ class ScreenOcr(
 
                 override fun onFailure(errorCode: Int) {
                     Log.w(TAG, "screenshot failed: $errorCode (windowOnly=$windowOnly)")
-                    // 单窗口截图失败（例如读不到内容的悬浮窗口）→ 退回全屏截图 + 裁剪
+                    // Window screenshot failed (e.g. an unreadable overlay window) → fall back to full screenshot + crop
                     if (windowOnly) recognize(region, -1, packageName, onResult) else onResult(null)
                 }
             }

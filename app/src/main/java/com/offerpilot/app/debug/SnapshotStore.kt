@@ -15,12 +15,12 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 控件快照（Phase 0 可行性验证用，类似 GKD 快照）。
+ * Node snapshots (for the Phase 0 feasibility check, similar to GKD snapshots).
  *
- * - 只在用户主动触发（延时抓取 / 无障碍按钮）或用户开启"自动快照"时保存；
- * - 只导出目标应用窗口的控件树；其他窗口只记录包名和类型；
- * - 保存在本应用私有外部目录 Android/data/com.offerpilot.app/files/snapshots/，不会上传；
- * - 截图默认不保存。
+ * - Saved only when the user triggers it (delayed capture / accessibility button) or turns on "auto snapshot";
+ * - Only the target app's node tree is exported; other windows record just package name and type;
+ * - Stored in the app's private external dir Android/data/com.offerpilot.app/files/snapshots/, never uploaded;
+ * - Screenshots are not saved by default.
  */
 class SnapshotStore(private val service: AccessibilityService) {
 
@@ -77,7 +77,7 @@ class SnapshotStore(private val service: AccessibilityService) {
         return file
     }
 
-    /** 可选：保存整屏截图（用户在调试页显式开启时）。 */
+    /** Optional: save a full-screen screenshot (only when explicitly enabled on the debug page). */
     fun saveScreenshot(bitmap: Bitmap, jsonFile: File): File {
         val png = File(jsonFile.parentFile, jsonFile.nameWithoutExtension + ".png")
         png.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -90,7 +90,7 @@ class SnapshotStore(private val service: AccessibilityService) {
     fun list(): List<File> = dir.listFiles()?.filter { it.extension == "json" }?.sortedByDescending { it.lastModified() }.orEmpty()
 
     companion object {
-        /** 把一个会话目录打包成同名 zip（放在 snapshots/ 下），便于一次分享。 */
+        /** Packs a session directory into a zip of the same name (under snapshots/) for one-tap sharing. */
         fun zipSession(sessionDir: File): File {
             val zip = File(sessionDir.parentFile, sessionDir.name + ".zip")
             java.util.zip.ZipOutputStream(zip.outputStream().buffered()).use { out ->

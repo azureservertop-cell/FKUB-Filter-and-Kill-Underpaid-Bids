@@ -10,8 +10,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 默认模式：最低报价 = 公里 × 每公里车辆成本 + 小时 × 目标净时薪。
- * 默认：油耗 10L/100km、油价 $1.36/L、维护 $10/100km → $0.236/km；目标净时薪 $18 → $0.30/min。
+ * Default mode: required pay = km × vehicle cost per km + hours × target net hourly.
+ * Defaults: 10 L/100km, fuel $1.36/L, maintenance $10/100km → $0.236/km; target $18/h → $0.30/min.
  */
 class NetHourlyEvaluatorTest {
     private val ev = OfferEvaluator(EvaluatorSettings(tipFreeShare = 1.0))
@@ -28,7 +28,7 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun caseA() {
-        // 29.92 × 0.236 = 7.06；42 × 0.30 = 12.60；最低 19.66；ratio 0.46
+        // 29.92 × 0.236 = 7.06; 42 × 0.30 = 12.60; required 19.66; ratio 0.46
         val r = ev.evaluate(offer(9.0, 29.92, 42.0))
         near(7.06, r.distanceRequirement)
         near(12.60, r.timeRequirement)
@@ -38,7 +38,7 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun caseB() {
-        // 40.99 × 0.236 = 9.67；63 × 0.30 = 18.90；最低 28.57；ratio 1.155
+        // 40.99 × 0.236 = 9.67; 63 × 0.30 = 18.90; required 28.57; ratio 1.155
         val r = ev.evaluate(offer(33.01, 40.99, 63.0))
         near(28.57, r.requiredPrice)
         near(22.22, r.netHourly)
@@ -46,7 +46,7 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun caseC() {
-        // 3 × 0.236 = 0.71；10 × 0.30 = 3.00；最低 3.71；ratio 1.89
+        // 3 × 0.236 = 0.71; 10 × 0.30 = 3.00; required 3.71; ratio 1.89
         val r = ev.evaluate(offer(7.0, 3.0, 10.0))
         near(3.71, r.requiredPrice)
         near(37.75, r.netHourly)
@@ -64,7 +64,7 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun vehicle_inputs_change_result() {
-        // 油耗 15L、维护 $20/100km → (15×1.36+20)/100 = 0.404/km；案例 B 最低 = 16.56 + 18.90 = 35.46 → 不推荐
+        // 15 L and $20/100km maintenance → (15×1.36+20)/100 = 0.404/km; case B required = 16.56 + 18.90 = 35.46 → below target
         val thirsty = OfferEvaluator(EvaluatorSettings(fuelLitersPer100Km = 15.0, maintenancePer100Km = 20.0, tipFreeShare = 1.0))
         val r = thirsty.evaluate(offer(33.01, 40.99, 63.0))
         near(35.46, r.requiredPrice)
@@ -78,7 +78,7 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun loss_when_payout_below_vehicle_cost() {
-        // 30km 成本 7.08；$6 不够回本 → 红
+        // 30 km costs 7.08; $6 doesn't cover it → red
         val r = ev.evaluate(offer(6.0, 30.0, 40.0))
         near(7.08, r.vehicleCost)
         assertEquals(Verdict.LOSS, r.verdict)
@@ -98,28 +98,28 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun return_trip_adds_cost_and_time() {
-        // 案例 B + 返程 20km / 20min：(60.99 × 0.236) + (83 × 0.30) = 14.39 + 24.90 = 39.29
+        // case B + 20 km / 20 min return: (60.99 × 0.236) + (83 × 0.30) = 14.39 + 24.90 = 39.29
         val r = ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(20.0, 20.0))
         near(39.29, r.requiredPrice)
         assertEquals(Verdict.LOSS, r.verdict)
     }
 
-    // ---- 默认：不含小费价 = 显示价 × 85% ----
+    // ---- Default: tip-free pay = shown price × 85% ----
     @Test fun tip_free_share_default() {
         val d = OfferEvaluator()
-        // 案例 C：不含小费 5.95；达标 3.71；比值 1.60 → 绿
+        // case C: tip-free 5.95; required 3.71; ratio 1.60 → green
         val c = d.evaluate(offer(7.0, 3.0, 10.0))
         near(5.95, c.basePay)
         near(1.60, c.ratio)
         near(31.45, c.netHourly)
         assertEquals(Verdict.GOOD, c.verdict)
-        // 案例 B：不含小费 28.06 < 达标 28.57 → 红
+        // case B: tip-free 28.06 < required 28.57 → red
         assertEquals(Verdict.LOSS, d.evaluate(offer(33.01, 40.99, 63.0)).verdict)
     }
 
     @Test fun yellow_starts_exactly_at_18_per_hour_plus_vehicle_cost_without_tip() {
         val s = EvaluatorSettings()
-        val shown = s.displayedPriceFor(20.0, 30.0) // 达标 13.72 / 0.85 = 16.14
+        val shown = s.displayedPriceFor(20.0, 30.0) // required 13.72 / 0.85 = 16.14
         near(16.14, shown)
         val r = OfferEvaluator(s).evaluate(offer(shown, 20.0, 30.0))
         near(18.0, r.netHourly, 1e-9)

@@ -41,13 +41,13 @@ import java.lang.ref.WeakReference
 import java.util.concurrent.Executors
 
 /**
- * 订单监测服务（PRD 2.2 / 4.4）。
+ * Offer monitoring service (PRD 2.2 / 4.4).
  *
- * 监听窗口事件 → 节流读取目标应用的文字 → OfferPipeline（适配器 + 去重 + 计算）
- * → 语音 / 悬浮 / 震动。识别、计算、显示、动作彼此解耦；动作模块是 NoOp。
+ * Window events → throttled read of the target app's text → OfferPipeline (adapter + dedupe + evaluation)
+ * → speech / overlay / vibration. Recognition, evaluation, display and actions are decoupled; the action module is a no-op.
  *
- * 性能：事件节流到每 [READ_INTERVAL_MS] 最多读一次；在后台线程读取节点；
- * 有节点上限；任何异常都被吞掉并降级为"无订单"，绝不影响 Uber Driver。
+ * Performance: events are throttled to at most one read per [READ_INTERVAL_MS]; nodes are read on a worker thread
+ * with a node cap; every exception is swallowed and degrades to "no offer", never affecting Uber Driver.
  */
 class OfferMonitorService : AccessibilityService() {
 
@@ -55,9 +55,9 @@ class OfferMonitorService : AccessibilityService() {
         private const val TAG = "OfferMonitor"
         private const val READ_INTERVAL_MS = 150L
         private const val MAX_AUTO_SNAPSHOTS = 30
-        /** 持续抓取：两份快照之间的最短间隔，以及每个会话的上限。 */
+        /** Continuous capture: minimum gap between two snapshots, and the per-session limit. */
         private const val RECORD_MIN_INTERVAL_MS = 1000L
-        /** 两次 OCR 截图之间的最小间隔（系统对 takeScreenshot 也有频率限制）。 */
+        /** Minimum gap between two OCR screenshots (the system also rate-limits takeScreenshot). */
         private const val OCR_MIN_INTERVAL_MS = 800L
         private const val OPAQUE_MAX_MISSES = 3
         const val RECORD_MAX_COUNT = 1000
@@ -82,14 +82,14 @@ class OfferMonitorService : AccessibilityService() {
     private lateinit var ocr: ScreenOcr
     private val actionHandler: OfferActionHandler = NoOpOfferActionHandler
 
-    // 仅在 worker 线程访问
+    // Worker thread only
     private var adapter = UberDriverAdapter()
     private var pipeline = OfferPipeline(adapter, OfferEvaluator())
     private var readScheduled = false
     private var lastAutoSnapshotKey: String? = null
     private var buttonCallback: AccessibilityButtonController.AccessibilityButtonCallback? = null
 
-    // 持续抓取会话（仅 worker 线程访问）
+    // Continuous capture session (worker thread only)
     private var recordDir: java.io.File? = null
     private var recordCount = 0
     private var recordLastHash = 0
@@ -133,7 +133,7 @@ class OfferMonitorService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || !(settings.monitoringEnabled || recording)) return
         if (!::workHandler.isInitialized) return
-        // 非目标应用的事件只用于"用户离开 Uber"的判断：不读取其内容。
+        // Events from other apps are only used to notice that the user left Uber; their content is never read.
         val relevant = when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOWS_CHANGED -> true
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> event.packageName?.toString() in settings.targetPackages
@@ -152,7 +152,7 @@ class OfferMonitorService : AccessibilityService() {
         }
     }
 
-    /** worker 线程。 */
+    /** Worker thread. */
     private fun processFrame() {
         val s = settings
         if (!s.monitoringEnabled && recordDir == null) return
@@ -176,21 +176,21 @@ class OfferMonitorService : AccessibilityService() {
                 MonitorState.update { it.copy(lastAdapterNote = adapter.lastDebug?.note) }
                 handle(pipeline.processResult(adapted, now), s, now)
             } else {
-                // 节点被隐藏：不把"空帧"喂给跟踪器（否则会误判订单消失），改走 OCR。
+                // Nodes are hidden: don't feed an "empty" frame to the tracker (it would think the offer vanished); use OCR instead.
                 requestOcr(region, read.screen.packageName)
             }
         } catch (t: Throwable) {
-            // 安全降级：任何解析/读取异常都只记录，不输出结论、不重试轰炸
+            // Fail safe: any parse/read error is only logged; no verdict is shown and nothing is retried in a loop
             Log.w(TAG, "frame failed", t)
             clearOutputs()
         }
     }
 
     /**
-     * 判断是否"疑似有订单弹窗但节点读不到"，返回需要 OCR 的屏幕区域，否则 null。
+     * Decides whether an offer popup is probably on screen but unreadable via nodes; returns the screen region to OCR, or null.
      *
-     * 真机快照（Android 15）显示：Uber 在前台弹出订单时，整个界面层从无障碍树里消失，只剩地图。
-     * 另外，Uber 在后台时会在其他应用上方显示自己的窗口（非 application 类型）。
+     * Real-device snapshots (Android 15): when Uber shows an offer in the foreground, its whole UI layer disappears from the accessibility tree, leaving only the map.
+     * When Uber is in the background it draws its own (non-application) windows on top of other apps.
      */
     private fun hiddenOfferRegion(read: NodeReader.ScreenRead): NodeReader.TargetWindow? {
         val dm = resources.displayMetrics
@@ -200,12 +200,12 @@ class OfferMonitorService : AccessibilityService() {
         if (bigOverlay != null) return bigOverlay
         val app = read.windows.firstOrNull { it.isApplication }
         if (app != null && read.screen.nodes.isEmpty()) return app
-        // Uber 在线（有 Uber 窗口，如悬浮气泡）时，读不到内容的大窗口很可能就是弹在其他应用上的订单卡片。
-        // 同一个窗口连续几次识别不到订单就不再截图，避免对其他应用的悬浮窗反复 OCR。
+        // While Uber is online (an Uber window such as the floating bubble exists), a large unreadable window is most likely the offer card shown over another app.
+        // If several OCR passes on the same window find no offer, stop capturing it so other apps' overlays aren't OCR'd repeatedly.
         return read.opaqueWindows.firstOrNull { (opaqueMisses[it.id] ?: 0) < OPAQUE_MAX_MISSES }
     }
 
-    /** 读不到内容的窗口 id → 连续 OCR 未识别到订单的次数。 */
+    /** Unreadable window id → number of consecutive OCR passes that found no offer. */
     private val opaqueMisses = HashMap<Int, Int>()
 
     // ---------------- OCR ----------------
@@ -216,7 +216,7 @@ class OfferMonitorService : AccessibilityService() {
     private var lastOcrLines: List<String> = emptyList()
     private var lastOcrLinesAt = 0L
 
-    /** worker 线程。最小间隔 [OCR_MIN_INTERVAL_MS]，同一时间只跑一个。 */
+    /** Worker thread. At least [OCR_MIN_INTERVAL_MS] apart, one at a time. */
     private fun requestOcr(window: NodeReader.TargetWindow, pkg: String) {
         if (ocrInFlight) return
         val wait = OCR_MIN_INTERVAL_MS - (SystemClock.elapsedRealtime() - lastOcrAt)
@@ -234,7 +234,7 @@ class OfferMonitorService : AccessibilityService() {
                     if (found) opaqueMisses.remove(window.id) else opaqueMisses[window.id] = (opaqueMisses[window.id] ?: 0) + 1
                     if (opaqueMisses.size > 50) opaqueMisses.clear()
                 }
-                // 识别期间弹窗已消失（出现过正常节点帧）→ 丢弃，避免输出过期结论
+                // The popup closed while OCR was running (a normal node frame arrived) → discard, so no stale verdict is shown
                 if (screen != null && gen == frameGeneration && s.monitoringEnabled) {
                     lastOcrLines = screen.nodes.map { it.text }
                     lastOcrLinesAt = System.currentTimeMillis()
@@ -247,7 +247,7 @@ class OfferMonitorService : AccessibilityService() {
             } catch (t: Throwable) {
                 Log.w(TAG, "ocr handling failed", t)
             }
-            // 弹窗期间 Uber 不一定持续发事件：主动再看一次，以便发现弹窗消失或内容变化
+            // Uber doesn't always emit events while the popup is up: look again so we notice it closing or changing
             scheduleRead(OCR_MIN_INTERVAL_MS)
         }
     }
@@ -290,14 +290,14 @@ class OfferMonitorService : AccessibilityService() {
                 pendingSpeech?.let { mainHandler.removeCallbacks(it) }
                 val r = Runnable { pendingSpeech = null; speaker.speak(text, s.ttsVolume) }
                 pendingSpeech = r
-                mainHandler.postDelayed(r, soundMs) // 音效播完再说话
+                mainHandler.postDelayed(r, soundMs) // speak after the sound finishes
             }
             if (s.vibrationEnabled) mainHandler.post { runCatching { haptics.play(out.result.verdict) } }
         }
-        actionHandler.onEvaluated(out.offer, out.result) // NoOp：第一版不执行任何操作
+        actionHandler.onEvaluated(out.offer, out.result) // no-op: v1 never performs any action
     }
 
-    /** 模拟页调用：用真实的悬浮层 / 语音 / 震动预览一条模拟订单。 */
+    /** Called from the mock page: previews a mock offer with the real overlay / speech / vibration. */
     fun preview(offer: com.offerpilot.core.model.DeliveryOffer, result: com.offerpilot.core.model.EvaluationResult) {
         present(PipelineOutput.Show(offer, result, announce = true), settings)
     }
@@ -311,7 +311,7 @@ class OfferMonitorService : AccessibilityService() {
         sounds.stop()
     }
 
-    // ---------------- 调试快照 ----------------
+    // ---------------- Debug snapshots ----------------
 
     private fun maybeAutoSnapshot(s: AppSettings, out: PipelineOutput.Show) {
         if (!s.debugMode || !s.autoSnapshot) return
@@ -322,11 +322,11 @@ class OfferMonitorService : AccessibilityService() {
         takeSnapshotNow("auto:${out.result.verdict}")
     }
 
-    // ---------------- 持续抓取 ----------------
+    // ---------------- Continuous capture ----------------
 
     @Volatile private var recording = false
 
-    /** UI 调用：开始持续抓取。目标应用画面文字每变化一次保存一份快照（至少间隔 1 秒）。 */
+    /** Called from the UI: start continuous capture. Saves a snapshot each time the target app's text changes (at least 1 s apart). */
     fun startRecording() {
         workHandler.post {
             if (recordDir != null) return@post
@@ -339,7 +339,7 @@ class OfferMonitorService : AccessibilityService() {
         }
     }
 
-    /** UI 调用：结束持续抓取并打包成 zip。 */
+    /** Called from the UI: stop continuous capture and pack it into a zip. */
     fun stopRecording() {
         workHandler.post {
             val dir = recordDir ?: return@post
@@ -353,13 +353,13 @@ class OfferMonitorService : AccessibilityService() {
         }
     }
 
-    /** worker 线程：画面文字有变化才保存，避免地图动画导致的重复。 */
+    /** Worker thread: save only when the screen text changed, to avoid duplicates from map animation. */
     private fun recordFrame(read: NodeReader.ScreenRead, now: Long) {
         val dir = recordDir ?: return
         val hash = read.signature
         if (hash == recordLastHash) return
         if (now - recordLastAt < RECORD_MIN_INTERVAL_MS) {
-            // 稍后再读一次，保证变化后的最终画面也能被保存
+            // Read once more later so the final state after a change is also saved
             scheduleRead(RECORD_MIN_INTERVAL_MS - (now - recordLastAt))
             return
         }
@@ -386,7 +386,7 @@ class OfferMonitorService : AccessibilityService() {
         overlay.showBadge("● 抓取中 $recordCount")
     }
 
-    /** UI 调用：延时 [delayMs] 后抓取当前屏幕（留时间切到 Uber）。 */
+    /** Called from the UI: capture the current screen after [delayMs] (time to switch to Uber). */
     fun scheduleSnapshot(delayMs: Long) {
         MonitorState.update { it.copy(snapshotCountdownUntil = System.currentTimeMillis() + delayMs) }
         workHandler.postDelayed({
@@ -395,7 +395,7 @@ class OfferMonitorService : AccessibilityService() {
         }, delayMs)
     }
 
-    /** worker 线程。 */
+    /** Worker thread. */
     private fun takeSnapshotNow(reason: String) {
         val s = settings
         val file = runCatching { snapshots.capture(s.targetPackages, reason, adapter.lastDebug, ocrLines = recentOcrLines()) }
@@ -427,7 +427,7 @@ class OfferMonitorService : AccessibilityService() {
         })
     }
 
-    /** 调试模式下在导航栏显示无障碍按钮：在 Uber 弹出订单时点一下即可抓取快照。 */
+    /** In debug mode, show the accessibility button in the nav bar: tap it while Uber shows an offer to capture a snapshot. */
     private fun updateAccessibilityButton(enabled: Boolean) {
         val info = serviceInfo ?: return
         info.flags = if (enabled) info.flags or AccessibilityServiceInfo.FLAG_REQUEST_ACCESSIBILITY_BUTTON
@@ -452,7 +452,7 @@ class OfferMonitorService : AccessibilityService() {
     }
 
     override fun onDestroy() {
-        // 权限被撤销或服务被关闭：撤下所有提示并安全退出
+        // Permission revoked or service turned off: remove all hints and exit safely
         clearOutputs()
         if (::overlay.isInitialized) overlay.hideBadge()
         MonitorState.update { it.copy(recording = null) }

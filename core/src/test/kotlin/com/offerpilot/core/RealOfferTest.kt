@@ -14,9 +14,9 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * 真实 Uber Driver 订单弹窗（2026-11-19，Android 15，London ON）。
- * 无障碍节点在弹窗期间被隐藏，以下文字取自同一时刻的截图（即 OCR 路径会看到的内容），
- * 取货 / 送达地址已删除。行坐标按截图（1216×2688）近似。
+ * Real Uber Driver offer popup (2026-11-19, Android 15, London ON).
+ * Nodes are hidden during the popup; the text below comes from a screenshot at the same moment (what the OCR path sees),
+ * with pickup / drop-off addresses removed. Line coordinates approximate the 1216×2688 screenshot.
  */
 class RealOfferTest {
     private fun ocrScreen(vararg lines: Pair<String, Box>) =
@@ -39,19 +39,19 @@ class RealOfferTest {
         assertEquals(15.0, o.offer.durationMinutes)
         assertEquals(OfferSource.OCR, o.offer.source)
         assertTrue(o.offer.confidence >= 0.6f)
-        // 达标 1.3 × 0.236 + 15 × 0.30 = 4.81；不含小费 5.50 × 0.85 = 4.68；比值 0.97 → 红（不达标）
+        // required 1.3 × 0.236 + 15 × 0.30 = 4.81; tip-free 5.50 × 0.85 = 4.68; ratio 0.97 → red (below target)
         assertEquals(Verdict.LOSS, OfferEvaluator().evaluate(o.offer).verdict)
     }
 
     @Test fun earnings_pill_does_not_confuse_payout() {
-        // 弹窗外顶部的今日收入 "CA$0.00" 若被一并识别，不应影响报价（0 被过滤）
+        // if today's earnings "CA$0.00" above the popup is OCR'd too, it must not affect the price (0 is filtered out)
         val withPill = ocrScreen("CA$0.00" to Box(407, 137, 729, 239), *popup.nodes.map { it.text to it.bounds!! }.toTypedArray())
         val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(withPill))
         assertEquals(5.50, o.offer.estimatedPayout)
     }
 }
 
-/** 真机 OCR 误读修正。 */
+/** Real-device OCR misread repairs. */
 class OcrRepairTest {
     private fun fix(s: String) = com.offerpilot.core.parser.OfferParser.repairOcrPriceLine(s).first
 
@@ -75,7 +75,7 @@ class OcrRepairTest {
     }
 
     @Test fun real_second_popup_with_own_overlay_text() {
-        // 真机 OCR（Uber 在桌面上方弹单，全屏截图）原样输出，含本应用悬浮条被识别出的 "F$5/ 3km A$17/h"
+        // raw real-device OCR (Uber popping over the launcher, full screenshot), including our own pill read as "F$5/ 3km A$17/h"
         val lines = listOf(
             "07:39 e", "N", "N", "A", "F$5/ 3km A$17/h", "CLARKE RD", "ARGYLE", "ARGYLE PARK", "Y Delivery Exclusive",
             "CA$5.05", "including estimated tip", "() 15 min (3.4 km) total", "HeBlSu 100", "TRAFALGAR ST", "Accept",
@@ -97,7 +97,7 @@ class OcrRepairTest {
     }
 }
 
-/** 真机：Uber 在后台，订单卡片弹在 Google 地图上方；整数价格 "CA$6"。 */
+/** Real device: Uber in the background, offer card over Google Maps; integer price "CA$6". */
 class IntegerPriceTest {
     @Test fun integer_price_not_mangled() {
         val p = com.offerpilot.core.parser.OfferParser
@@ -117,7 +117,7 @@ class IntegerPriceTest {
         assertEquals(6.0, o.estimatedPayout)
         assertEquals(8.0, o.distanceKm)
         assertEquals(22.0, o.durationMinutes)
-        // 达标 8 × 0.236 + 22 × 0.30 = 8.49；不含小费 6 × 0.85 = 5.10 → 红
+        // required 8 × 0.236 + 22 × 0.30 = 8.49; tip-free 6 × 0.85 = 5.10 → red
         assertEquals(Verdict.LOSS, OfferEvaluator().evaluate(o).verdict)
     }
 }

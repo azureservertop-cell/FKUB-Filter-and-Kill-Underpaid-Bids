@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import java.util.Locale
 
-/** 简短语音播报。QUEUE_FLUSH：新结论覆盖旧结论，不排队打断导航。 */
+/** Short spoken verdicts. QUEUE_FLUSH: a new verdict replaces the old one instead of queueing over navigation. */
 class Speaker(context: Context) : TextToSpeech.OnInitListener {
     private val tts = TextToSpeech(context.applicationContext, this)
     @Volatile private var ready = false

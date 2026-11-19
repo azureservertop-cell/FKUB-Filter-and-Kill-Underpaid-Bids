@@ -1,14 +1,14 @@
 package com.offerpilot.core.model
 
-/** 与 Android 无关的矩形，便于在 JVM 上测试。 */
+/** Android-independent rectangle, so it can be tested on the JVM. */
 data class Box(val left: Int, val top: Int, val right: Int, val bottom: Int) {
     val width: Int get() = right - left
     val height: Int get() = bottom - top
 }
 
 /**
- * 从无障碍节点（或将来 OCR）读到的一段文字。
- * viewId / className 仅作参考，适配器不得依赖未经验证的控件 ID。
+ * A piece of text read from an accessibility node or from OCR.
+ * viewId / className are informational only; adapters must not rely on unverified view IDs.
  */
 data class TextNode(
     val text: String,
@@ -19,7 +19,7 @@ data class TextNode(
     val fromContentDescription: Boolean = false,
 )
 
-/** 某一时刻目标应用屏幕上的全部可见文字。 */
+/** All visible text of the target app's screen at one moment. */
 data class ScreenText(
     val packageName: String,
     val nodes: List<TextNode>,

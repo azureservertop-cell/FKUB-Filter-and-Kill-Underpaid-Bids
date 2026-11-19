@@ -43,7 +43,7 @@ import com.offerpilot.core.parser.UberAdapterConfig
 import com.offerpilot.core.parser.UberDriverAdapter
 import com.offerpilot.core.rules.OfferEvaluator
 
-/** 无需启动 Uber 的模拟订单测试页（PRD 十一.7）。 */
+/** Mock offer test page that doesn't need Uber running (PRD 11.7). */
 @Composable
 fun MockOfferScreen(s: AppSettings, modifier: Modifier) {
     var payout by rememberSaveable { mutableStateOf("$9.00") }

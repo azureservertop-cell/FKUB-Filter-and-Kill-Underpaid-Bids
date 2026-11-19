@@ -5,15 +5,15 @@ import com.offerpilot.core.parser.AdapterResult
 import kotlin.math.roundToLong
 
 /**
- * 订单生命周期跟踪：去重、不完整订单的稳定等待、消失即失效（PRD 4.3 / 4.4）。
+ * Offer lifecycle tracking: dedupe, settle time for incomplete offers, invalidate as soon as it disappears (PRD 4.3 / 4.4).
  *
- * 纯逻辑，无线程、无计时器：调用方每次读到一帧屏幕就调用 [onFrame]，
- * 若返回 [TrackerEvent.PendingIncomplete]，调用方应在 [settleMs] 后再读一帧。
+ * Pure logic, no threads or timers: the caller calls [onFrame] for every screen frame it reads;
+ * on [TrackerEvent.PendingIncomplete] it should read another frame after [settleMs].
  */
 class OfferTracker(
-    /** 同一订单在此时间窗内不重复播报。 */
+    /** The same offer isn't announced twice within this window. */
     private val dedupWindowMs: Long = 20_000,
-    /** 字段不完整时等待其补全的时间，超过后才输出"信息不完整"。 */
+    /** How long to wait for missing fields before reporting "incomplete". */
     val settleMs: Long = 700,
 ) {
     private var current: DeliveryOffer? = null
@@ -37,7 +37,7 @@ class OfferTracker(
                 val offer = result.offer
                 val key = dedupKey(offer)
                 if (!result.complete) {
-                    // 已经在展示一个完整订单时，偶发的不完整帧不改变结论
+                    // While a complete offer is shown, an occasional incomplete frame doesn't change the verdict
                     if (current != null && currentKey != null && !currentKey!!.contains("?")) return TrackerEvent.Unchanged
                     val since = incompleteSince ?: now.also { incompleteSince = it }
                     if (now - since < settleMs) return TrackerEvent.PendingIncomplete
@@ -76,14 +76,14 @@ class OfferTracker(
 sealed interface TrackerEvent {
     data object Idle : TrackerEvent
     data object Unchanged : TrackerEvent
-    /** 订单字段不完整，等待补全；调用方应在 settleMs 后重新读取。 */
+    /** Offer fields incomplete, waiting for them; the caller should read again after settleMs. */
     data object PendingIncomplete : TrackerEvent
-    /** 新订单（或订单内容变化）。suppressAnnouncement=true 时只刷新悬浮窗，不再语音播报。 */
+    /** New offer (or its content changed). With suppressAnnouncement=true only the overlay is refreshed, no speech. */
     data class NewOffer(
         val offer: DeliveryOffer,
         val replaced: DeliveryOffer?,
         val suppressAnnouncement: Boolean,
     ) : TrackerEvent
-    /** 订单弹窗消失：必须立即撤下结论。 */
+    /** Offer popup gone: the verdict must be withdrawn immediately. */
     data class OfferGone(val offer: DeliveryOffer) : TrackerEvent
 }

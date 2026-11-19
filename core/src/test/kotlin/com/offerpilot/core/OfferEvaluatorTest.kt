@@ -12,14 +12,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** PRD 3.1 简单规则模式（max(公里×0.8, 分钟×0.5)）下的测试。默认净时薪模式见 NetHourlyEvaluatorTest。 */
+/** Tests for the PRD 3.1 simple rule mode (max(km×0.8, min×0.5)). The default net-hourly mode is covered by NetHourlyEvaluatorTest. */
 class OfferEvaluatorTest {
     private val simple = EvaluatorSettings(mode = RuleMode.PER_KM_PER_MINUTE, tipFreeShare = 1.0)
     private val ev = OfferEvaluator(simple)
     private fun near(expected: Double, actual: Double?, eps: Double = 0.005) =
         assertTrue(actual != null && kotlin.math.abs(expected - actual) < eps, "expected $expected but was $actual")
 
-    // ---- PRD 3.3 测试案例 ----
+    // ---- PRD 3.3 test cases ----
     @Test fun caseA_longCheap_notRecommended() {
         val r = ev.evaluate(offer(9.0, 29.92, 42.0))
         near(23.94, r.distanceRequirement)
@@ -44,11 +44,11 @@ class OfferEvaluatorTest {
         assertEquals(Verdict.GOOD, r.verdict)
     }
 
-    // ---- 边界 ----
+    // ---- Boundaries ----
     @Test fun tier_boundaries() {
         assertEquals(Verdict.GREAT, ev.evaluate(offer(14.4, 10.0, 10.0)).verdict)   // ratio 1.8
         assertEquals(Verdict.GOOD, ev.evaluate(offer(14.39, 10.0, 10.0)).verdict)
-        assertEquals(Verdict.LOSS, ev.evaluate(offer(2.35, 10.0, 10.0)).verdict)     // 不够成本
+        assertEquals(Verdict.LOSS, ev.evaluate(offer(2.35, 10.0, 10.0)).verdict)     // below cost
     }
 
     @Test fun ratio_exactly_1_is_marginal_and_1_2_is_recommended() {
@@ -71,7 +71,7 @@ class OfferEvaluatorTest {
         assertTrue(r.belowMinimumOrder)
     }
 
-    // ---- 缺失 / 异常 ----
+    // ---- Missing / invalid ----
     @Test fun missing_values_unknown() {
         assertEquals(listOf(UnknownReason.MISSING_PAYOUT), ev.evaluate(offer(null, 3.0, 10.0)).unknownReasons)
         assertEquals(listOf(UnknownReason.MISSING_DISTANCE), ev.evaluate(offer(7.0, null, 10.0)).unknownReasons)
@@ -111,13 +111,13 @@ class OfferEvaluatorTest {
         assertTrue(UnknownReason.STALE in r.unknownReasons)
     }
 
-    // ---- 返程成本（PRD 6.2）----
+    // ---- Return trip cost (PRD 6.2) ----
     @Test fun return_trip_cost() {
-        // 案例 B 加 20km / 20min 返程：max(60.99*0.8, 83*0.5) = 48.79 → ratio 0.68
+        // case B + 20 km / 20 min return: max(60.99*0.8, 83*0.5) = 48.79 → ratio 0.68
         val r = ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(20.0, 20.0))
         near(48.79, r.requiredPrice)
         assertEquals(Verdict.LOSS, r.verdict)
-        // 返程 0 时与无返程一致
+        // a zero return trip equals no return trip
         assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(0.0, 0.0)).verdict)
     }
 
@@ -126,6 +126,6 @@ class OfferEvaluatorTest {
         val r = ev.evaluate(offer(9.0, 29.92, 42.0))
         near(7.06, r.vehicleCost, 0.01)
         near(1.94, r.netAfterVehicleCost, 0.01)
-        assertEquals(Verdict.LOSS, r.verdict) // 不达标 → 红
+        assertEquals(Verdict.LOSS, r.verdict) // below target → red
     }
 }

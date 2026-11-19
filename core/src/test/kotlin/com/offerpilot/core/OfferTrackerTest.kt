@@ -46,7 +46,7 @@ class OfferTrackerTest {
         assertEquals(TrackerEvent.PendingIncomplete, t.onFrame(inc, 0))
         assertEquals(TrackerEvent.PendingIncomplete, t.onFrame(inc, 300))
         assertIs<TrackerEvent.NewOffer>(t.onFrame(inc, 800))
-        // 后来补全 → 新结论
+        // completed later → new verdict
         assertIs<TrackerEvent.NewOffer>(t.onFrame(a, 900))
     }
 
@@ -54,7 +54,7 @@ class OfferTrackerTest {
         val t = OfferTracker(settleMs = 700)
         assertEquals(TrackerEvent.PendingIncomplete, t.onFrame(AdapterResult.Offer(offer(9.0, null, null), false), 0))
         assertIs<TrackerEvent.NewOffer>(t.onFrame(a, 200))
-        // 完整订单展示期间的偶发不完整帧不改变结论
+        // an occasional incomplete frame while a complete offer is shown doesn't change the verdict
         assertEquals(TrackerEvent.Unchanged, t.onFrame(AdapterResult.Offer(offer(9.0, null, null), false), 300))
     }
 
@@ -77,7 +77,7 @@ class OfferTrackerTest {
         val p = com.offerpilot.core.OfferPipeline(UberDriverAdapter(), OfferEvaluator())
         val show = p.process(screen("$9.00", "42 min (29.92 km)", "Accept", ts = 0), 0)
         assertIs<com.offerpilot.core.PipelineOutput.Show>(show)
-        // 切到其他应用 → 立即撤下结论
+        // switching to another app → withdraw the verdict immediately
         assertEquals(com.offerpilot.core.PipelineOutput.Clear, p.process(screen("$9.00", "42 min (29.92 km)", pkg = "com.google.android.apps.maps", ts = 100), 100))
     }
 }

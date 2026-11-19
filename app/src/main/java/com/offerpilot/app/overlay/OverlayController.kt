@@ -14,9 +14,9 @@ import com.offerpilot.app.settings.OverlayPosition
 import com.offerpilot.core.model.Verdict
 
 /**
- * 无障碍悬浮提示（TYPE_ACCESSIBILITY_OVERLAY，无需"悬浮窗"权限）。
- * 不可触摸、不可聚焦：不会挡住或拦截 Uber 的接单按钮（默认显示在屏幕顶部，
- * 接单区域通常在底部——待真机确认后可在设置里改位置）。
+ * Accessibility overlay hints (TYPE_ACCESSIBILITY_OVERLAY; no "draw over other apps" permission needed).
+ * Not touchable or focusable: never covers or intercepts Uber's accept button (shown at the top of the screen by default,
+ * while the accept area is usually at the bottom).
  */
 class OverlayController(private val service: AccessibilityService) {
     private val wm = service.getSystemService(WindowManager::class.java)
@@ -27,7 +27,7 @@ class OverlayController(private val service: AccessibilityService) {
     private var glow: EdgeGlowView? = null
 
     /**
-     * 显示结论。[showText] 控制文字小条，[showGlow] 控制屏幕边缘发光（无法判断时不发光）。
+     * Shows a verdict. [showText] controls the text pill, [showGlow] the edge glow (no glow when the verdict is unknown).
      */
     fun show(text: String, verdict: Verdict, position: OverlayPosition, seconds: Int, showText: Boolean = true, showGlow: Boolean = true) {
         main.post {
@@ -88,7 +88,7 @@ class OverlayController(private val service: AccessibilityService) {
 
     private var badge: TextView? = null
 
-    /** 持续抓取时左上角的小标记（不可触摸）。 */
+    /** Small badge in the top-left corner during continuous capture (not touchable). */
     fun showBadge(text: String) {
         main.post {
             val tv = badge ?: createView().also { v ->

@@ -12,11 +12,11 @@ import android.view.RoundedCorner
 import android.view.View
 
 /**
- * 全屏边缘荧光。
+ * Full-screen edge glow.
  *
- * 用一组同心圆角矩形描边叠出光晕：最外圈最亮，向内逐层变淡。圆角半径取自屏幕真实圆角
- * （Android 12+ RoundedCorner API），所以四角是顺滑的弧形，不会出现方块或亮斑。
- * 只在边缘绘制，中间完全透明；所在窗口不可触摸。呼吸动画只改 View 透明度，不重绘。
+ * Built from concentric rounded-rect strokes: brightest at the outer edge, fading inward. The corner radius comes from
+ * the display's real rounded corners (Android 12+ RoundedCorner API), so the corners are smooth arcs without blocks or hot spots.
+ * Draws only along the edges, the middle is fully transparent, and the window is not touchable. The pulse animates View alpha only, no redraw.
  */
 class EdgeGlowView(context: Context) : View(context) {
     private fun dp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, resources.displayMetrics)
@@ -66,9 +66,9 @@ class EdgeGlowView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val outerRadius = screenCornerRadius()
         val step = thickness / layers
-        paint.strokeWidth = step + 1f // 略重叠，避免层间缝隙
+        paint.strokeWidth = step + 1f // slight overlap to avoid gaps between layers
         for (i in 0 until layers) {
-            // i = 0 在最外圈。透明度按平方衰减，外亮内淡，过渡柔和。
+            // i = 0 is the outermost ring. Alpha falls off quadratically: bright outside, soft inside.
             val f = 1f - i.toFloat() / layers
             val a = (235 * f * f).toInt().coerceIn(0, 255)
             paint.color = Color.argb(a, Color.red(color), Color.green(color), Color.blue(color))

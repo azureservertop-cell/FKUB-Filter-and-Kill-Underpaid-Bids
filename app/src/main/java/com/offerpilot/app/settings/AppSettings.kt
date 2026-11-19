@@ -7,8 +7,8 @@ import com.offerpilot.core.rules.EvaluatorSettings
 enum class OverlayPosition { TOP, CENTER }
 
 /**
- * 某一档的音效。[customPath] 为 null 时用内置音效（黄色没有内置音效）。
- * 自定义文件会复制到应用私有目录，路径存在这里。
+ * Sound settings for one tier. A null [customPath] uses the built-in sound (yellow has none).
+ * Custom files are copied into app-private storage and their path is stored here.
  */
 data class TierSound(
     val enabled: Boolean = true,
@@ -25,30 +25,30 @@ val DEFAULT_TIER_SOUNDS: Map<Verdict, TierSound> = mapOf(
     Verdict.LOSS to TierSound(),
 )
 
-/** 全部用户设置（本地 DataStore 持久化）。 */
+/** All user settings (persisted locally in DataStore). */
 data class AppSettings(
     val evaluator: EvaluatorSettings = EvaluatorSettings(),
-    /** 主开关：暂停时服务保持连接但不识别、不提示。 */
+    /** Master switch: when paused the service stays connected but doesn't recognize or alert. */
     val monitoringEnabled: Boolean = true,
     val ttsEnabled: Boolean = true,
-    /** 档位音效总开关：蓝 气笛、绿 金币、黄 无、红 拉稀。 */
+    /** Master switch for tier sounds: blue air horn, green coin, yellow none, red fart. */
     val soundEnabled: Boolean = true,
-    /** 各档音效设置（自定义文件、音量、开关）。 */
+    /** Per-tier sound settings (custom file, volume, on/off). */
     val tierSounds: Map<Verdict, TierSound> = DEFAULT_TIER_SOUNDS,
     val vibrationEnabled: Boolean = true,
     val overlayEnabled: Boolean = true,
-    /** 屏幕边缘荧光（蓝绿黄红）。 */
+    /** Screen edge glow (blue / green / yellow / red). */
     val edgeGlowEnabled: Boolean = true,
-    /** 节点读不到订单（Uber 隐藏了弹窗内容）时，用无障碍截图 + 本地 OCR 识别。 */
+    /** When nodes don't contain the offer (Uber hides the popup), recognize it via accessibility screenshot + on-device OCR. */
     val ocrEnabled: Boolean = true,
     /** 0.0–1.0 */
     val ttsVolume: Float = 1.0f,
     val overlayPosition: OverlayPosition = OverlayPosition.TOP,
     val overlaySeconds: Int = 8,
     val debugMode: Boolean = false,
-    /** 调试模式下，检测到疑似订单时自动保存控件快照。 */
+    /** In debug mode, automatically save a node snapshot when a likely offer is detected. */
     val autoSnapshot: Boolean = false,
-    /** 快照是否附带截图。默认关闭（PRD 10.4：默认不持久化截图）。 */
+    /** Whether snapshots include a screenshot. Off by default (PRD 10.4: screenshots are not persisted by default). */
     val snapshotScreenshot: Boolean = false,
     val targetPackages: Set<String> = UberAdapterConfig().targetPackages,
 )

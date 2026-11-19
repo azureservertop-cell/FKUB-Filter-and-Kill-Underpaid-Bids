@@ -52,7 +52,7 @@ private fun builtinName(v: Verdict) = when (v) {
     else -> "无内置音效，可选择文件"
 }
 
-/** 音效设置：总开关 + 每档开关、音量、试听、换文件、恢复默认。 */
+/** Sound settings: master switch + per-tier toggle, volume, preview, change file, reset. */
 @Composable
 fun SoundSection(s: AppSettings, repo: SettingsRepository) {
     val ctx = LocalContext.current

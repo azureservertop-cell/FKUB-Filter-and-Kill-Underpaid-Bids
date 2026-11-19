@@ -7,7 +7,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import com.offerpilot.core.model.Verdict
 
-/** 不同档位不同震动：蓝三下、绿一下、黄两下、红长震、无法判断不震。 */
+/** Vibration per tier: blue three pulses, green one, yellow two, red one long; none when unknown. */
 class Haptics(context: Context) {
     private val vibrator: Vibrator =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

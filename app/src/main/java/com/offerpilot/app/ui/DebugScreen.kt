@@ -163,7 +163,7 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     }
 }
 
-/** 列出快照中目标窗口的所有文字及 id/bounds，方便直接看出报价、距离、时间是否可读。 */
+/** Lists every text in the snapshot's target windows with id/bounds, to see at a glance whether price, distance and time are readable. */
 private fun summarize(f: File): String = runCatching {
     val root = org.json.JSONObject(f.readText())
     val sb = StringBuilder()

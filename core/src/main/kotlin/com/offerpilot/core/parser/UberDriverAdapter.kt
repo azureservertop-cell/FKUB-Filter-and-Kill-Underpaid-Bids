@@ -9,14 +9,14 @@ import kotlin.math.abs
 import kotlin.math.roundToLong
 
 /**
- * Uber Driver 订单弹窗适配器。
+ * Uber Driver offer popup adapter.
  *
- * ⚠️ 待验证（PENDING VERIFICATION）
- * 截至本版本，尚未取得 Uber Driver 真实订单弹窗的无障碍快照。因此：
- *  - 本适配器 **不使用任何控件 ID**（不虚构 view id）；
- *  - 只依赖"屏幕上同时出现金额 + 距离 + 时间"这一通用特征和下面可配置的关键字；
- *  - 所有关键字都标记为待验证，拿到 GKD 快照后应按实际文字修正 [UberAdapterConfig]；
- *  - 出现歧义时宁可输出"无法判断"，也不猜。
+ * Phase 0 (2026-11-19, Android 15): while an offer is up, Uber hides its UI from the accessibility tree,
+ * so in practice this adapter runs on OCR text ("CA$5.50" / "including estimated tip" / "15 min (1.3 km) total" / "Accept").
+ *  - It uses **no view IDs** (none are invented);
+ *  - it relies only on money + distance + time appearing together, plus the configurable keywords below;
+ *  - keywords not yet seen on a real device stay marked as pending; correct [UberAdapterConfig] from new snapshots;
+ *  - when anything is ambiguous it returns "unknown" rather than guessing.
  */
 class UberDriverAdapter(
     private val config: UberAdapterConfig = UberAdapterConfig(),
@@ -25,7 +25,7 @@ class UberDriverAdapter(
     override val id: String = "uber-driver-heuristic-v1"
     override val verified: Boolean get() = config.verifiedOnRealDevice
 
-    /** 最近一次 extract 的调试信息（供调试页展示）。 */
+    /** Debug info from the last extract call (shown on the debug page). */
     @Volatile
     var lastDebug: AdapterDebug? = null
         private set
@@ -63,7 +63,7 @@ class UberDriverAdapter(
         val hasAccept = acceptNodes.isNotEmpty()
         val allThree = money.isNotEmpty() && dist.isNotEmpty() && dur.isNotEmpty()
 
-        // 是否存在订单弹窗：三类数值齐全，或有"接受"按钮且至少出现一类数值。
+        // Is there an offer popup: all three values present, or an "Accept" button plus at least one value.
         val offerPresent = allThree || (hasAccept && (money.isNotEmpty() || dist.isNotEmpty() || dur.isNotEmpty()))
         if (!offerPresent) {
             lastDebug = AdapterDebug(
@@ -99,7 +99,7 @@ class UberDriverAdapter(
             km == null -> issues += ParseIssue.DISTANCE_AMBIGUOUS
         }
 
-        // 时长：优先与距离同一节点的（例如 "42 min (29.9 km)"），避免把"2 min away"之类当作总时长。
+        // Duration: prefer the one in the same node as the distance (e.g. "42 min (29.9 km)") so "2 min away" isn't taken as the total.
         val durPreferred = dur.filter { d -> dist.any { it.nodeIndex == d.nodeIndex } }.ifEmpty { dur }
         var (minutes, minPenalty) = pick(durPreferred, config.totalKeywords, preferLargestText = false, centsTolerance = 0.5)
         confidence -= minPenalty
@@ -121,8 +121,8 @@ class UberDriverAdapter(
             estimatedPayout = payout,
             distanceKm = km,
             durationMinutes = minutes,
-            pickupText = null,       // 待验证：未确认能可靠提取，且涉及隐私，第一版不读取
-            destinationText = null,  // 同上
+            pickupText = null,       // not read in v1: not reliably extractable and privacy-sensitive
+            destinationText = null,  // same as above
             multiStop = multiStop,
             timestamp = screen.timestamp,
             source = screen.source,
@@ -140,11 +140,11 @@ class UberDriverAdapter(
     }
 
     /**
-     * 从候选值中选出唯一值。返回 (值, 置信度惩罚)。
-     * 1. 去重后只有一个值 → 直接用；
-     * 2. 只有一个候选所在文字带"标签关键字" → 用它；
-     * 3. preferLargestText 时，若某个候选的字号（节点高度）明显最大 → 用它；
-     * 4. 否则返回 null（歧义）。
+     * Picks a single value from the candidates. Returns (value, confidence penalty).
+     * 1. only one distinct value → use it;
+     * 2. only one candidate's text carries a label keyword → use it;
+     * 3. with preferLargestText, if one candidate's font (node height) is clearly the largest → use it;
+     * 4. otherwise null (ambiguous).
      */
     private fun pick(
         cands: List<Cand>,
@@ -191,30 +191,30 @@ class UberDriverAdapter(
 }
 
 /**
- * Uber 适配器配置。**所有关键字均为待验证**，请用 GKD / 本应用调试快照的真实文字修正。
+ * Uber adapter config. Keywords marked "pending" haven't been seen on a real device yet; correct them from debug snapshots.
  */
 data class UberAdapterConfig(
     /**
-     * 目标应用包名。"com.ubercab.driver" 是 Uber Driver 在 Google Play 上公开的包名，
-     * 但仍需在真机快照中确认；可在设置页修改。
+     * Target package. "com.ubercab.driver" was confirmed on a real device (Phase 0);
+     * it can be changed on the settings page.
      */
     val targetPackages: Set<String> = setOf("com.ubercab.driver"),
-    /** 待验证：接单按钮的文字。只用于提高置信度/检测多订单，不会被点击。 */
+    /** Accept button text ("Accept" seen on a real device; others pending). Only raises confidence / detects multiple offers, never tapped. */
     val acceptKeywords: List<String> = listOf("Accept", "Match", "Tap to accept", "接受", "接单"),
-    /** 待验证：报价旁边可能出现的标签。 */
+    /** Pending: labels that may appear next to the price. */
     val payoutLabelKeywords: List<String> = listOf("est.", "estimated", "total", "earn", "预估", "总计"),
-    /** 待验证：这些文字所在的金额不是订单报价（加价、小费说明、累计收入等）。 */
+    /** Amounts in text containing these are not the offer price (boosts, tip notes, earnings totals, ...). Partly pending. */
     val payoutExcludeKeywords: List<String> = listOf(
         "+$", "boost", "surge", "promo", "quest", "today", "this week", "balance",
         "/hr", "per hour", "/h", "incl.", "includes", "tip", "fee", "今日", "本周", "加价",
     ),
-    /** 待验证：这些文字中的时间不是行程总时长（如到取货点的 ETA）。 */
+    /** Pending: durations in text containing these are not the trip total (e.g. ETA to pickup). */
     val durationExcludeKeywords: List<String> = listOf("away", "ago", "expires", "remaining", "left"),
-    /** 待验证：总距离/总时间的标签。 */
+    /** Labels for total distance / time ("total" seen on a real device). */
     val totalKeywords: List<String> = listOf("total", "trip", "总"),
     val multiStopKeywords: List<String> = listOf("stops", "multiple", "deliveries", "多点", "多单"),
-    /** 多段距离且没有"total"时是否相加。默认关闭：在真机验证前不做此假设。 */
+    /** Whether to add up several leg distances when there's no "total". Off by default: not assumed until verified on a device. */
     val sumLegsWhenNoTotal: Boolean = false,
-    /** 用真机快照验证适配器后设为 true。 */
+    /** Set to true once every keyword has been verified against real-device snapshots. */
     val verifiedOnRealDevice: Boolean = false,
 )

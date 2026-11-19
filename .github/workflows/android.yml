@@ -21,7 +21,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # ubuntu-latest 自带 Android SDK（ANDROID_HOME），AGP 会自动补齐缺少的 platform / build-tools
+      # ubuntu-latest ships the Android SDK (ANDROID_HOME); AGP installs any missing platform / build-tools
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests (core + app)
@@ -46,7 +46,7 @@ jobs:
             core/build/test-results/
             app/build/reports/
 
-      # main 分支每次构建后，把 APK 发布到固定的 "latest" Release，手机上可直接下载
+      # After every build on main, publish the APK to the fixed "latest" release so it can be downloaded straight to the phone
       - name: Publish APK to "latest" release
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:

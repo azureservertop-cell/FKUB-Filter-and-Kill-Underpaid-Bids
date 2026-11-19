@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 仅震动反馈。无网络权限：所有数据只在本地处理。 -->
+    <!-- Vibration only. No INTERNET permission: all data is processed on the device. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <queries>

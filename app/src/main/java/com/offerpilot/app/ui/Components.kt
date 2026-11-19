@@ -45,7 +45,7 @@ fun SwitchRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit, hint
     }
 }
 
-/** 数字输入框：只在输入合法（且通过 [valid]）时提交。 */
+/** Numeric input field: commits only when the input parses (and passes [valid]). */
 @Composable
 fun NumberField(
     label: String,

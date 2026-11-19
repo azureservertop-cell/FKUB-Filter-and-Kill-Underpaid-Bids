@@ -6,13 +6,12 @@ import com.offerpilot.core.model.Verdict
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** 悬浮窗与语音的简短文案（PRD 5.2 / 5.3）。不朗读地址。 */
+/** Short overlay and speech texts (PRD 5.2 / 5.3). Addresses are never read aloud. */
 object OfferMessages {
 
-    /** 例："不推荐 · $9 / 30km · 净$3/h" */
     /**
-     * 悬浮提示条：只写预估净时薪（档位已由边缘颜色表示，里程已计入净时薪）。
-     * 例："净 $17/h"、"净 -$4/h"；无法判断时 "无法识别"。
+     * Overlay pill: shows only the estimated net hourly (the tier is shown by the edge colour; distance is already in the net hourly).
+     * e.g. "净 $17/h", "净 -$4/h"; "无法识别" when no verdict.
      */
     fun overlay(offer: DeliveryOffer, result: EvaluationResult): String {
         val h = result.netHourly?.takeIf { result.isConclusive } ?: return "无法识别"
@@ -20,7 +19,7 @@ object OfferMessages {
         return if (v < 0) "净 -$" + (-v) + "/h" else "净 $" + v + "/h"
     }
 
-    /** 例："9块，30公里，不推荐。" / "订单信息不完整。" */
+    /** e.g. "9块，30公里，不达标。" / "订单信息不完整。" */
     fun speech(offer: DeliveryOffer, result: EvaluationResult): String {
         if (result.verdict == Verdict.UNKNOWN) return "${Verdict.UNKNOWN.speech}。"
         val p = offer.estimatedPayout!!.roundToInt()
@@ -29,7 +28,7 @@ object OfferMessages {
         return "${p}块，${k}公里，$word。"
     }
 
-    /** 详细说明，用于主界面/模拟测试页。 */
+    /** Detailed explanation for the home and mock pages. */
     fun detail(offer: DeliveryOffer, result: EvaluationResult): String = buildString {
         appendLine("报价：${money(offer.estimatedPayout)}  距离：${num(offer.distanceKm)} km  时间：${num(offer.durationMinutes)} 分钟")
         if (result.isConclusive) {

@@ -28,9 +28,9 @@ class SoundPlayer(private val context: Context) {
         ).build()
 
     private val loaded = HashSet<Int>()
-    /** 内置音效：资源 id → (SoundPool id, 时长 ms)。 */
+    /** Built-in sounds: resource id → (SoundPool id, duration ms). */
     private val builtin = HashMap<Verdict, Pair<Int, Long>>()
-    /** 自定义文件路径 → (SoundPool id, 时长 ms)。 */
+    /** Custom file path → (SoundPool id, duration ms). */
     private val custom = HashMap<String, Pair<Int, Long>>()
 
     init {
@@ -40,14 +40,14 @@ class SoundPlayer(private val context: Context) {
         builtin[Verdict.LOSS] = pool.load(context, R.raw.sfx_poop, 1) to 1700L
     }
 
-    /** 预加载自定义文件（设置变化时调用），避免第一次播放时还没加载好。 */
+    /** Preloads custom files (call when settings change) so the first play isn't missed. */
     fun prepare(sounds: Map<Verdict, TierSound>) {
         sounds.values.mapNotNull { it.customPath }.forEach { path ->
             if (path !in custom && File(path).exists()) custom[path] = pool.load(path, 1) to durationMs(path)
         }
     }
 
-    /** 播放该档位音效，返回时长（毫秒）；该档关闭、没有音效或尚未加载时返回 0。 */
+    /** Plays the tier's sound and returns its duration in ms; 0 if the tier is off, has no sound or isn't loaded yet. */
     fun play(verdict: Verdict, cfg: TierSound?): Long {
         if (cfg == null || !cfg.enabled) return 0L
         val (id, ms) = cfg.customPath?.let { path ->
@@ -76,10 +76,10 @@ class SoundPlayer(private val context: Context) {
     }.getOrDefault(1000L)
 
     companion object {
-        /** 自定义音效再长，语音最多等这么久就开始说。 */
+        /** However long a custom sound is, speech starts after at most this long. */
         const val MAX_SPEECH_DELAY_MS = 2500L
 
-        /** 把用户选的音频复制到应用私有目录，返回新路径。 */
+        /** Copies the audio file the user picked into app-private storage and returns the new path. */
         fun importFile(context: Context, uri: Uri, verdict: Verdict): String? = runCatching {
             val dir = File(context.filesDir, "sounds").apply { mkdirs() }
             dir.listFiles()?.filter { it.name.startsWith(verdict.name + "-") }?.forEach { it.delete() }

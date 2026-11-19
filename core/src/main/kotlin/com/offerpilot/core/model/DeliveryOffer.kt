@@ -1,13 +1,13 @@
 package com.offerpilot.core.model
 
-/** 订单数据来源。 */
+/** Where the offer data came from. */
 enum class OfferSource { ACCESSIBILITY, OCR, MOCK }
 
 /**
- * 统一的订单数据模型（PRD 4.1）。
+ * Unified offer model (PRD 4.1).
  *
- * 所有数值字段都允许为 null：读不到就是 null，绝不编造。
- * 内部单位：加元、公里、分钟。
+ * Every numeric field is nullable: unreadable means null, never invented.
+ * Internal units: CAD, km, minutes.
  */
 data class DeliveryOffer(
     val offerId: String,
@@ -19,13 +19,13 @@ data class DeliveryOffer(
     val multiStop: Boolean? = null,
     val timestamp: Long,
     val source: OfferSource,
-    /** 0.0–1.0 识别置信度。 */
+    /** Recognition confidence, 0.0–1.0. */
     val confidence: Float,
-    /** 解析过程中发现的问题（歧义、缺字段等），用于降级与调试。 */
+    /** Problems found while parsing (ambiguity, missing fields, ...), used for degrading and debugging. */
     val issues: List<ParseIssue> = emptyList(),
 )
 
-/** 解析问题。任何一项出现都会阻止"肯定推荐"。 */
+/** Parse issues. Any of them prevents a confident recommendation. */
 enum class ParseIssue(val description: String) {
     PAYOUT_MISSING("未读到报价"),
     PAYOUT_AMBIGUOUS("出现多个无法区分的金额"),

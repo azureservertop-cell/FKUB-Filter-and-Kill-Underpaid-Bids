@@ -13,7 +13,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** 以下屏幕文字均为合成数据，用于验证保守策略，并非真实 Uber 界面。 */
+/** All screen text below is synthetic, used to check the conservative strategy; it is not the real Uber UI. */
 class UberDriverAdapterTest {
     private val adapter = UberDriverAdapter()
     private val ev = OfferEvaluator()

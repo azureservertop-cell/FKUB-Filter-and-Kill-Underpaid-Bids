@@ -19,7 +19,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            // 未配置正式签名时用 debug 签名，方便侧载安装
+            // Without a release keystore, sign with the debug key so the APK can be sideloaded
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -42,7 +42,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    // 本地文字识别（打包模型，不依赖 Play 服务下载，不联网）
+    // On-device text recognition (bundled model: no Play Services download, no network)
     implementation("com.google.mlkit:text-recognition:16.0.1")
 
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
