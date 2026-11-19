@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -42,3 +45,16 @@ jobs:
             core/build/reports/tests/
             core/build/test-results/
             app/build/reports/
+
+      # main 分支每次构建后，把 APK 发布到固定的 "latest" Release，手机上可直接下载
+      - name: Publish APK to "latest" release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk OfferPilot-debug.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest OfferPilot-debug.apk \
+            --title "OfferPilot 最新构建 (${GITHUB_SHA::7})" \
+            --notes "main 分支自动构建的调试版 APK。只做识别与建议，不会自动点击。Uber 适配器尚待真机验证，见 docs/PHASE0.md。" \
+            --prerelease

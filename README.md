@@ -18,8 +18,8 @@ Uber Driver 弹出配送订单时，OfferPilot 通过无障碍服务读取报价
 
 ## 安装
 
-1. 打开仓库的 **Actions** 页 → 最新一次 *Android CI* 运行 → 底部 *Artifacts* 下载 `OfferPilot-debug-apk`，解压得到 `app-debug.apk`。
-2. 传到手机安装（需允许“安装未知应用”）。
+1. 在手机上打开仓库的 **Releases → latest**，下载 `OfferPilot-debug.apk`（每次推送 main 后由 CI 自动更新；也可在 Actions 运行页的 Artifacts 下载）。
+2. 安装（需允许“安装未知应用”）。
 3. 打开 OfferPilot → 「状态」页 →「打开系统无障碍设置」→ 开启 **OfferPilot 订单判断**。
    - Android 13+ 侧载应用的开关如果是灰色：系统设置 → 应用 → OfferPilot → 右上角 ⋮ → **允许受限设置**，再回去开启。
 4. 确认 TTS 引擎支持中文（系统设置 → 文字转语音）。
