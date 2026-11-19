@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Vibration only. No INTERNET permission: all data is processed on the device. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Only used in Auto fuel-price mode to download public regional fuel prices. Offers, screenshots and
+         settings never leave the device. In Manual mode the app makes no network requests. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
         <intent>

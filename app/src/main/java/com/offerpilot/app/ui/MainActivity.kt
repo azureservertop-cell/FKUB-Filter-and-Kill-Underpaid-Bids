@@ -11,6 +11,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -19,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.offerpilot.app.OfferPilotApp
+import com.offerpilot.app.fuel.FuelPriceUpdater
 import com.offerpilot.app.settings.AppSettings
 
 class MainActivity : ComponentActivity() {
@@ -44,6 +46,7 @@ private enum class Tab(val en: String, val zh: String, val glyph: String) {
 @Composable
 private fun AppRoot(settings: AppSettings, repo: com.offerpilot.app.settings.SettingsRepository) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) { runCatching { FuelPriceUpdater.refreshIfDue(repo) } }
     Scaffold(
         bottomBar = {
             NavigationBar {

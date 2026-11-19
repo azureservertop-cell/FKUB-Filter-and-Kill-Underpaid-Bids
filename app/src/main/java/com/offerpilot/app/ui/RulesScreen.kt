@@ -1,6 +1,21 @@
 package com.offerpilot.app.ui
 
 import androidx.compose.foundation.layout.Column
+import java.util.Date
+import java.text.DateFormat
+import com.offerpilot.app.settings.FuelSettings
+import com.offerpilot.app.settings.FuelPriceMode
+import com.offerpilot.app.fuel.FuelPriceUpdater
+import androidx.compose.ui.Alignment
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +49,7 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             Text(tr("Fill these in and FKUB works out which offers are worth it.", "填好这几项，就能自动算出什么样的单合适。"), style = MaterialTheme.typography.bodySmall)
             NumberField(tr("Fuel consumption (L/100 km)", "百公里油耗（L/100km）"), e.fuelLitersPer100Km, { v -> upd { it.copy(fuelLitersPer100Km = v) } })
             NumberField(tr("Maintenance ($/100 km: servicing, tires, depreciation…)", "百公里维护费用（$/100km，保养、轮胎、折旧等）"), e.maintenancePer100Km, { v -> upd { it.copy(maintenancePer100Km = v) } })
-            NumberField(tr("Fuel price ($/L)", "汽油单价（$/L）"), e.fuelPricePerLiter, { v -> upd { it.copy(fuelPricePerLiter = v) } })
+            FuelPriceBlock(s, repo)
             Text(tr("Vehicle cost per km ≈ ${OfferMessages.money(e.vehicleCostPerKm)}", "每公里车辆成本 ≈ ${OfferMessages.money(e.vehicleCostPerKm)}"), style = MaterialTheme.typography.bodySmall)
         }
 
@@ -105,3 +120,77 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
 private val EXAMPLES = listOf(10.0 to 3.0, 20.0 to 8.0, 30.0 to 15.0, 45.0 to 25.0, 60.0 to 40.0)
 
 private fun fmt(v: Double) = String.format(Locale.US, "%.2f", v).trimEnd('0').trimEnd('.')
+
+/** Fuel price: Auto (default, public regional average) or Manual. */
+@Composable
+private fun FuelPriceBlock(s: AppSettings, repo: SettingsRepository) {
+    val scope = rememberCoroutineScope()
+    val f = s.fuel
+    var refreshing by remember { mutableStateOf(false) }
+    fun updFuel(t: (FuelSettings) -> FuelSettings) = scope.launch { repo.update { it.copy(fuel = t(it.fuel)) } }
+    fun refresh() = scope.launch {
+        refreshing = true
+        try { FuelPriceUpdater.refreshIfDue(repo, force = true) } finally { refreshing = false }
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(tr("Fuel price", "油价"), Modifier.weight(1f))
+        FuelPriceMode.entries.forEach { m ->
+            val label = if (m == FuelPriceMode.AUTO) tr("Auto", "自动") else tr("Manual", "手动")
+            if (f.mode == m) {
+                Button(onClick = {}, contentPadding = PaddingValues(horizontal = 12.dp)) { Text(label) }
+            } else {
+                TextButton(onClick = {
+                    updFuel { it.copy(mode = m) }
+                    if (m == FuelPriceMode.AUTO) refresh()
+                }) { Text(label) }
+            }
+        }
+    }
+    if (f.mode == FuelPriceMode.MANUAL) {
+        NumberField(tr("Fuel price ($/L)", "汽油单价（$/L）"), s.evaluator.fuelPricePerLiter, { v ->
+            scope.launch { repo.update { it.copy(evaluator = it.evaluator.copy(fuelPricePerLiter = v)) } }
+        })
+        Text(tr("Manual mode makes no network requests.", "手动模式不会联网。"), style = MaterialTheme.typography.bodySmall)
+    } else {
+        var regionText by remember(f.region) { mutableStateOf(f.region) }
+        OutlinedTextField(
+            regionText, { regionText = it },
+            label = { Text(tr("City / region", "城市 / 地区")) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = {
+                    val r = regionText.trim().ifEmpty { "London" }
+                    scope.launch {
+                        repo.update { it.copy(fuel = it.fuel.copy(region = r)) }
+                        refreshing = true
+                        try { FuelPriceUpdater.refreshIfDue(repo, force = true) } finally { refreshing = false }
+                    }
+                },
+                enabled = !refreshing,
+            ) { Text(if (refreshing) tr("Updating…", "更新中…") else tr("Update now", "立即更新")) }
+            Text(
+                tr("Current: ", "当前：") + OfferMessages.money(s.evaluator.fuelPricePerLiter) + "/L",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        val status = when {
+            f.fetchedAt > 0 && f.error == null -> tr("Average for ", "来源地区：") + f.sourceRegion +
+                (if (f.period.isNotBlank()) tr(", period ", "，统计期 ") + f.period else "") +
+                tr(" · updated ", " · 更新于 ") + DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(f.fetchedAt)) +
+                "\n" + f.source
+            f.error != null -> tr("Couldn't fetch the price, using the last value. ", "获取油价失败，暂用上次的值。") + f.error
+            else -> tr("Not fetched yet; using the default until it is.", "尚未获取，暂用默认值。")
+        }
+        Text(status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            tr(
+                "Auto downloads public weekly regional averages (Ontario open data, falling back to Statistics Canada) about twice a day. Nothing about you or your offers is sent.",
+                "自动模式每天约两次下载政府公开的地区平均油价（安大略省开放数据，取不到时用加拿大统计局），不会发送任何关于你或订单的信息。",
+            ),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
+}
+

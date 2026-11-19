@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.offerpilot.core.i18n.Lang
@@ -47,6 +48,15 @@ class SettingsRepository(private val context: Context) {
         val snapShot = booleanPreferencesKey("snapshot_screenshot")
         val targets = stringPreferencesKey("target_packages")
         val language = stringPreferencesKey("language")
+        val fuelMode = stringPreferencesKey("fuel_mode")
+        val fuelRegion = stringPreferencesKey("fuel_region")
+        val fuelFetchedAt = longPreferencesKey("fuel_fetched_at")
+        val fuelAttemptedAt = longPreferencesKey("fuel_attempted_at")
+        val fuelFetchedRegion = stringPreferencesKey("fuel_fetched_region")
+        val fuelPeriod = stringPreferencesKey("fuel_period")
+        val fuelSourceRegion = stringPreferencesKey("fuel_source_region")
+        val fuelSource = stringPreferencesKey("fuel_source")
+        val fuelError = stringPreferencesKey("fuel_error")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
@@ -70,6 +80,17 @@ class SettingsRepository(private val context: Context) {
                 outOfTownAlert = this[K.outOfTown] ?: e.outOfTownAlert,
             ),
             language = this[K.language]?.let { runCatching { Lang.valueOf(it) }.getOrNull() } ?: d.language,
+            fuel = FuelSettings(
+                mode = this[K.fuelMode]?.let { runCatching { FuelPriceMode.valueOf(it) }.getOrNull() } ?: d.fuel.mode,
+                region = this[K.fuelRegion] ?: d.fuel.region,
+                fetchedAt = this[K.fuelFetchedAt] ?: 0L,
+                attemptedAt = this[K.fuelAttemptedAt] ?: 0L,
+                fetchedRegion = this[K.fuelFetchedRegion] ?: "",
+                period = this[K.fuelPeriod] ?: "",
+                sourceRegion = this[K.fuelSourceRegion] ?: "",
+                source = this[K.fuelSource] ?: "",
+                error = this[K.fuelError]?.ifEmpty { null },
+            ),
             monitoringEnabled = this[K.monitoring] ?: d.monitoringEnabled,
             ttsEnabled = this[K.tts] ?: d.ttsEnabled,
             soundEnabled = this[K.sound] ?: d.soundEnabled,
@@ -132,6 +153,15 @@ class SettingsRepository(private val context: Context) {
             p[K.snapShot] = n.snapshotScreenshot
             p[K.targets] = n.targetPackages.joinToString(",")
             p[K.language] = n.language.name
+            p[K.fuelMode] = n.fuel.mode.name
+            p[K.fuelRegion] = n.fuel.region
+            p[K.fuelFetchedAt] = n.fuel.fetchedAt
+            p[K.fuelAttemptedAt] = n.fuel.attemptedAt
+            p[K.fuelFetchedRegion] = n.fuel.fetchedRegion
+            p[K.fuelPeriod] = n.fuel.period
+            p[K.fuelSourceRegion] = n.fuel.sourceRegion
+            p[K.fuelSource] = n.fuel.source
+            p[K.fuelError] = n.fuel.error ?: ""
         }
     }
 }

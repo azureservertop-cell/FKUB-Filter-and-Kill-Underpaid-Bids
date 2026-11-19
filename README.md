@@ -11,7 +11,7 @@ Android 11–15 (tested on Android 15) · Kotlin · Jetpack Compose · no root
 
 When Uber Driver pops up a delivery offer, FKUB reads the price, distance and time, evaluates them with your rules, and answers with a **coloured glow around the screen edge**, a small pill showing the estimated net hourly, a tier sound, an optional spoken verdict and vibration, all before the offer disappears.
 
-> **Recognition and advice only. It never taps anything.** There is no auto-accept or auto-reject, and the accessibility config declares no gesture capability. Everything is computed on the device and the app has no INTERNET permission.
+> **Recognition and advice only. It never taps anything.** There is no auto-accept or auto-reject, and the accessibility config declares no gesture capability. Everything is computed on the device. The only network use is downloading public regional fuel prices in Auto fuel-price mode; offers and screenshots never leave the phone.
 
 ## Download
 
@@ -49,7 +49,7 @@ This works with Uber in the foreground and when Uber pops an offer over another 
 
 ## Rules (default)
 
-On the **Rules** tab enter your car's **fuel consumption (L/100 km)**, **maintenance ($/100 km)**, fuel price, your **target net per hour** (default $18) and the **share of the shown price that isn't tip** (default 85%, roughly a 15–18% tip).
+On the **Rules** tab enter your car's **fuel consumption (L/100 km)**, **maintenance ($/100 km)**, fuel price (**Auto** by default: the weekly average for your city from public government data, refreshed about twice a day; or **Manual**), your **target net per hour** (default $18) and the **share of the shown price that isn't tip** (default 85%, roughly a 15–18% tip).
 
 ```
 tip-free pay      = Uber's shown price (incl. estimated tip) × 85%
@@ -142,19 +142,19 @@ CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishe
 
 ## Tests
 
-`core/src/test` has 67 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, and the English / Chinese messages.
+`core/src/test` has 70 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, fuel-price CSV parsing, and the English / Chinese messages.
 
 Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 
 ## Privacy
 
-No network permission. Screenshots are processed in memory and never saved by default. Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses, names and order numbers are not read.
+The only network requests are for public fuel-price data in Auto mode (Ontario open data, falling back to Statistics Canada); they only download whole public datasets, and your city is matched on the phone. Switch fuel price to Manual and the app makes no network requests at all. Screenshots are processed in memory and never saved by default. Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses, names and order numbers are not read.
 
 ## Status and limitations
 
 - Verified on one phone (nubia, Android 15) in London, Ontario, with Canadian-dollar offers in English. Other Uber layouts (multi-stop, other languages, other regions) haven't been seen yet; the adapter answers "unknown" rather than guessing.
 - OCR needs Android 14+ for window-only screenshots; Android 11–13 fall back to a full screenshot cropped to Uber's window.
-- Fuel price is entered by hand.
+- Auto fuel price uses government regional averages (weekly for Ontario cities, monthly from Statistics Canada elsewhere), so it lags the pump by days to weeks. The data layouts are discovered at runtime; if a source changes, the app keeps the last price and shows the error.
 - Debug builds only, signed with the debug key.
 
 ## Credits

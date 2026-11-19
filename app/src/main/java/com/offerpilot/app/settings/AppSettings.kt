@@ -7,6 +7,26 @@ import com.offerpilot.core.rules.EvaluatorSettings
 
 enum class OverlayPosition { TOP, CENTER }
 
+enum class FuelPriceMode { AUTO, MANUAL }
+
+/**
+ * Fuel price source. In [FuelPriceMode.AUTO] (default) the price is fetched from public regional averages
+ * and written into the evaluator's fuel price; in MANUAL the user types it and the app makes no network requests.
+ */
+data class FuelSettings(
+    val mode: FuelPriceMode = FuelPriceMode.AUTO,
+    /** City or region to look up, e.g. "London" or "Toronto". */
+    val region: String = "London",
+    val fetchedAt: Long = 0L,
+    val attemptedAt: Long = 0L,
+    val fetchedRegion: String = "",
+    val period: String = "",
+    val sourceRegion: String = "",
+    val source: String = "",
+    /** Last fetch error, null after a success. */
+    val error: String? = null,
+)
+
 /**
  * Sound settings for one tier. A null [customPath] uses the built-in sound (yellow has none).
  * Custom files are copied into app-private storage and their path is stored here.
@@ -31,6 +51,7 @@ data class AppSettings(
     val evaluator: EvaluatorSettings = EvaluatorSettings(),
     /** App, overlay and speech language. English by default. */
     val language: Lang = Lang.EN,
+    val fuel: FuelSettings = FuelSettings(),
     /** Master switch: when paused the service stays connected but doesn't recognize or alert. */
     val monitoringEnabled: Boolean = true,
     val ttsEnabled: Boolean = true,

@@ -23,6 +23,7 @@ import com.offerpilot.app.feedback.Haptics
 import com.offerpilot.app.feedback.SoundPlayer
 import com.offerpilot.app.overlay.OverlayController
 import com.offerpilot.app.settings.AppSettings
+import com.offerpilot.app.fuel.FuelPriceUpdater
 import com.offerpilot.app.speech.Speaker
 import com.offerpilot.core.OfferPipeline
 import com.offerpilot.core.PipelineOutput
@@ -113,6 +114,13 @@ class OfferMonitorService : AccessibilityService() {
         MonitorState.update { it.copy(serviceConnected = true) }
 
         val repo = (application as OfferPilotApp).settings
+        // Auto fuel price: check hourly; the updater itself refreshes at most every 12 h.
+        scope.launch {
+            while (true) {
+                runCatching { FuelPriceUpdater.refreshIfDue(repo) }
+                kotlinx.coroutines.delay(60 * 60 * 1000L)
+            }
+        }
         scope.launch {
             repo.settings.collect { s ->
                 val old = settings
