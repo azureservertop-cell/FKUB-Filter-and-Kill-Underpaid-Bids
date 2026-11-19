@@ -74,15 +74,15 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
         }
 
         Section("辅助设置") {
-            SwitchRow("语音播报", s.ttsEnabled, { v -> upd { it.copy(ttsEnabled = v) } })
-            Text("提示音量 ${(s.ttsVolume * 100).roundToInt()}%")
+            SwitchRow("语音播报", s.ttsEnabled, { v -> upd { it.copy(ttsEnabled = v) } }, "音效之后读出金额、公里和结论")
+            Text("语音音量 ${(s.ttsVolume * 100).roundToInt()}%")
             Slider(value = s.ttsVolume, onValueChange = { v -> upd { it.copy(ttsVolume = v) } })
             SwitchRow("震动", s.vibrationEnabled, { v -> upd { it.copy(vibrationEnabled = v) } })
             SwitchRow(
                 "屏幕边缘发光", s.edgeGlowEnabled, { v -> upd { it.copy(edgeGlowEnabled = v) } },
                 "蓝 = 无脑接，绿 = 比较赚，黄 = 刚好达标，红 = 不达标",
             )
-            SwitchRow("文字小条（金额 / 公里 / 净时薪）", s.overlayEnabled, { v -> upd { it.copy(overlayEnabled = v) } })
+            SwitchRow("顶部提示条（预估净时薪）", s.overlayEnabled, { v -> upd { it.copy(overlayEnabled = v) } })
             SwitchRow(
                 "截图识别（OCR）", s.ocrEnabled, { v -> upd { it.copy(ocrEnabled = v) } },
                 "Uber 弹出订单时会隐藏文字，需要截图后在本机识别。截图不保存、不上传",
@@ -99,6 +99,8 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             )
             SwitchRow("调试模式", s.debugMode, { v -> upd { it.copy(debugMode = v) } }, "启用快照抓取等调试工具（见「调试」页）")
         }
+
+        SoundSection(s, repo)
 
     }
 }

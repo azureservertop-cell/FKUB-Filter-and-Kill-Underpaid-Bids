@@ -20,6 +20,7 @@ import com.offerpilot.app.action.OfferActionHandler
 import com.offerpilot.app.capture.ScreenOcr
 import com.offerpilot.app.debug.SnapshotStore
 import com.offerpilot.app.feedback.Haptics
+import com.offerpilot.app.feedback.SoundPlayer
 import com.offerpilot.app.overlay.OverlayController
 import com.offerpilot.app.settings.AppSettings
 import com.offerpilot.app.speech.Speaker
@@ -75,6 +76,8 @@ class OfferMonitorService : AccessibilityService() {
     private lateinit var overlay: OverlayController
     private lateinit var speaker: Speaker
     private lateinit var haptics: Haptics
+    private lateinit var sounds: SoundPlayer
+    private var pendingSpeech: Runnable? = null
     private lateinit var snapshots: SnapshotStore
     private lateinit var ocr: ScreenOcr
     private val actionHandler: OfferActionHandler = NoOpOfferActionHandler
@@ -104,6 +107,7 @@ class OfferMonitorService : AccessibilityService() {
         overlay = OverlayController(this)
         speaker = Speaker(this)
         haptics = Haptics(this)
+        sounds = SoundPlayer(this)
         snapshots = SnapshotStore(this)
         ocr = ScreenOcr(this) { r -> workHandler.post(r) }
         MonitorState.update { it.copy(serviceConnected = true) }
@@ -113,6 +117,7 @@ class OfferMonitorService : AccessibilityService() {
             repo.settings.collect { s ->
                 val old = settings
                 settings = s
+                if (::sounds.isInitialized) sounds.prepare(s.tierSounds)
                 workHandler.post { rebuildPipeline(s) }
                 if (old.debugMode != s.debugMode || buttonCallback == null) updateAccessibilityButton(s.debugMode)
                 if (!s.monitoringEnabled) clearOutputs()
@@ -279,7 +284,14 @@ class OfferMonitorService : AccessibilityService() {
             )
         }
         if (out.announce) {
-            if (s.ttsEnabled) speaker.speak(OfferMessages.speech(out.offer, out.result), s.ttsVolume)
+            val soundMs = if (s.soundEnabled) sounds.play(out.result.verdict, s.tierSounds[out.result.verdict]) else 0L
+            if (s.ttsEnabled) {
+                val text = OfferMessages.speech(out.offer, out.result)
+                pendingSpeech?.let { mainHandler.removeCallbacks(it) }
+                val r = Runnable { pendingSpeech = null; speaker.speak(text, s.ttsVolume) }
+                pendingSpeech = r
+                mainHandler.postDelayed(r, soundMs) // 音效播完再说话
+            }
             if (s.vibrationEnabled) mainHandler.post { runCatching { haptics.play(out.result.verdict) } }
         }
         actionHandler.onEvaluated(out.offer, out.result) // NoOp：第一版不执行任何操作
@@ -293,7 +305,10 @@ class OfferMonitorService : AccessibilityService() {
     private fun clearOutputs() {
         if (!::overlay.isInitialized) return
         overlay.hide()
+        pendingSpeech?.let { mainHandler.removeCallbacks(it) }
+        pendingSpeech = null
         speaker.stop()
+        sounds.stop()
     }
 
     // ---------------- 调试快照 ----------------
@@ -442,6 +457,7 @@ class OfferMonitorService : AccessibilityService() {
         if (::overlay.isInitialized) overlay.hideBadge()
         MonitorState.update { it.copy(recording = null) }
         if (::speaker.isInitialized) speaker.shutdown()
+        if (::sounds.isInitialized) runCatching { sounds.release() }
         if (::ocr.isInitialized) runCatching { ocr.close() }
         if (::worker.isInitialized) worker.quitSafely()
         scope.cancel()

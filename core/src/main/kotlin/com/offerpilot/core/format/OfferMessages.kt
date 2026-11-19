@@ -10,15 +10,14 @@ import kotlin.math.roundToInt
 object OfferMessages {
 
     /** 例："不推荐 · $9 / 30km · 净$3/h" */
+    /**
+     * 悬浮提示条：只写预估净时薪（档位已由边缘颜色表示，里程已计入净时薪）。
+     * 例："净 $17/h"、"净 -$4/h"；无法判断时 "无法识别"。
+     */
     fun overlay(offer: DeliveryOffer, result: EvaluationResult): String {
-        val parts = buildList {
-            offer.estimatedPayout?.let { add("$" + it.roundToInt()) }
-            offer.distanceKm?.let { add("${it.roundToInt()}km") }
-        }
-        val label = result.verdict.shortLabel
-        val base = if (parts.isEmpty()) label else "$label · ${parts.joinToString(" / ")}"
-        val hourly = result.netHourly?.takeIf { result.isConclusive }?.let { " · 净$" + it.roundToInt() + "/h" } ?: ""
-        return base + hourly
+        val h = result.netHourly?.takeIf { result.isConclusive } ?: return "无法识别"
+        val v = h.roundToInt()
+        return if (v < 0) "净 -$" + (-v) + "/h" else "净 $" + v + "/h"
     }
 
     /** 例："9块，30公里，不推荐。" / "订单信息不完整。" */

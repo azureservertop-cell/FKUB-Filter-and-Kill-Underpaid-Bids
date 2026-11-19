@@ -33,6 +33,7 @@ class SettingsRepository(private val context: Context) {
         val outOfTown = booleanPreferencesKey("out_of_town_alert")
         val monitoring = booleanPreferencesKey("monitoring_enabled")
         val tts = booleanPreferencesKey("tts_enabled")
+        val sound = booleanPreferencesKey("sound_enabled")
         val vibration = booleanPreferencesKey("vibration_enabled")
         val overlay = booleanPreferencesKey("overlay_enabled")
         val ocr = booleanPreferencesKey("ocr_enabled")
@@ -68,6 +69,15 @@ class SettingsRepository(private val context: Context) {
             ),
             monitoringEnabled = this[K.monitoring] ?: d.monitoringEnabled,
             ttsEnabled = this[K.tts] ?: d.ttsEnabled,
+            soundEnabled = this[K.sound] ?: d.soundEnabled,
+            tierSounds = SOUND_TIERS.associateWith { v ->
+                val def = DEFAULT_TIER_SOUNDS.getValue(v)
+                TierSound(
+                    enabled = this[booleanPreferencesKey("sound_${v.name}_on")] ?: def.enabled,
+                    volume = this[floatPreferencesKey("sound_${v.name}_vol")] ?: def.volume,
+                    customPath = this[stringPreferencesKey("sound_${v.name}_path")]?.takeIf { it.isNotEmpty() },
+                )
+            },
             vibrationEnabled = this[K.vibration] ?: d.vibrationEnabled,
             overlayEnabled = this[K.overlay] ?: d.overlayEnabled,
             ocrEnabled = this[K.ocr] ?: d.ocrEnabled,
@@ -101,6 +111,12 @@ class SettingsRepository(private val context: Context) {
             p[K.outOfTown] = e.outOfTownAlert
             p[K.monitoring] = n.monitoringEnabled
             p[K.tts] = n.ttsEnabled
+            p[K.sound] = n.soundEnabled
+            for ((v, t) in n.tierSounds) {
+                p[booleanPreferencesKey("sound_${v.name}_on")] = t.enabled
+                p[floatPreferencesKey("sound_${v.name}_vol")] = t.volume
+                p[stringPreferencesKey("sound_${v.name}_path")] = t.customPath ?: ""
+            }
             p[K.vibration] = n.vibrationEnabled
             p[K.overlay] = n.overlayEnabled
             p[K.ocr] = n.ocrEnabled
