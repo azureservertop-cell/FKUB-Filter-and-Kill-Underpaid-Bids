@@ -79,6 +79,10 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             SwitchRow("震动", s.vibrationEnabled, { v -> upd { it.copy(vibrationEnabled = v) } })
             SwitchRow("悬浮提示", s.overlayEnabled, { v -> upd { it.copy(overlayEnabled = v) } })
             SwitchRow(
+                "截图识别（OCR）", s.ocrEnabled, { v -> upd { it.copy(ocrEnabled = v) } },
+                "Uber 弹出订单时会隐藏文字，需要截图后在本机识别。截图不保存、不上传",
+            )
+            SwitchRow(
                 "悬浮提示放在屏幕中间", s.overlayPosition == OverlayPosition.CENTER,
                 { v -> upd { it.copy(overlayPosition = if (v) OverlayPosition.CENTER else OverlayPosition.TOP) } },
                 "默认在顶部，避免遮挡底部接单区域（悬浮层不可点击，不会拦截触摸）",

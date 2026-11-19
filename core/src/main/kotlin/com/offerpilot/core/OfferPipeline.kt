@@ -16,8 +16,10 @@ class OfferPipeline(
     private val evaluator: OfferEvaluator,
     val tracker: OfferTracker = OfferTracker(),
 ) {
-    fun process(screen: ScreenText, now: Long): PipelineOutput {
-        val adapted: AdapterResult = adapter.extract(screen)
+    fun process(screen: ScreenText, now: Long): PipelineOutput = processResult(adapter.extract(screen), now)
+
+    /** 已经由适配器处理过的结果（例如调用方需要先看节点结果再决定是否走 OCR）。 */
+    fun processResult(adapted: AdapterResult, now: Long): PipelineOutput {
         return when (val ev = tracker.onFrame(adapted, now)) {
             is TrackerEvent.NewOffer -> PipelineOutput.Show(ev.offer, evaluator.evaluate(ev.offer, now), announce = !ev.suppressAnnouncement)
             is TrackerEvent.OfferGone -> PipelineOutput.Clear

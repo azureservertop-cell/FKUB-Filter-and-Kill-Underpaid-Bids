@@ -35,9 +35,28 @@ class NodeReader(private val service: AccessibilityService) {
         return out
     }
 
-    fun readScreen(targets: Set<String>, now: Long): ScreenText? {
+    /** 目标应用的一个窗口。 */
+    data class TargetWindow(val bounds: Rect, val isApplication: Boolean)
+
+    /** 一帧读取结果：文字 + 窗口信息（用于判断弹窗是否被隐藏、OCR 裁剪区域）。 */
+    data class ScreenRead(
+        val screen: ScreenText,
+        val windows: List<TargetWindow>,
+        val totalNodes: Int,
+    ) {
+        /** 结构签名：文字没变但窗口/节点结构变了也能察觉（持续抓取用）。 */
+        val signature: Int
+            get() = screen.nodes.fold(windows.hashCode() * 31 + totalNodes) { h, n ->
+                31 * h + n.text.hashCode() + 7 * (n.bounds?.hashCode() ?: 0)
+            }
+    }
+
+    fun read(targets: Set<String>, now: Long): ScreenRead? {
         val roots = targetRoots(targets)
         if (roots.isEmpty()) return null
+        val windows = roots.mapNotNull { (w, _) ->
+            w?.let { val r = Rect(); it.getBoundsInScreen(r); TargetWindow(r, it.type == AccessibilityWindowInfo.TYPE_APPLICATION) }
+        }
         val nodes = ArrayList<TextNode>(128)
         var count = 0
         val rect = Rect()
@@ -60,6 +79,6 @@ class NodeReader(private val service: AccessibilityService) {
         }
         for ((_, root) in roots) walk(root, 0)
         val pkg = roots.first().second.packageName?.toString() ?: return null
-        return ScreenText(pkg, nodes, now, OfferSource.ACCESSIBILITY)
+        return ScreenRead(ScreenText(pkg, nodes, now, OfferSource.ACCESSIBILITY), windows, count)
     }
 }

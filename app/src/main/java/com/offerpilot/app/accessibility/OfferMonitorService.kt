@@ -6,6 +6,7 @@ import android.accessibilityservice.AccessibilityService.ScreenshotResult
 import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
@@ -16,6 +17,7 @@ import android.view.accessibility.AccessibilityEvent
 import com.offerpilot.app.OfferPilotApp
 import com.offerpilot.app.action.NoOpOfferActionHandler
 import com.offerpilot.app.action.OfferActionHandler
+import com.offerpilot.app.capture.ScreenOcr
 import com.offerpilot.app.debug.SnapshotStore
 import com.offerpilot.app.feedback.Haptics
 import com.offerpilot.app.overlay.OverlayController
@@ -24,6 +26,7 @@ import com.offerpilot.app.speech.Speaker
 import com.offerpilot.core.OfferPipeline
 import com.offerpilot.core.PipelineOutput
 import com.offerpilot.core.format.OfferMessages
+import com.offerpilot.core.parser.AdapterResult
 import com.offerpilot.core.parser.UberAdapterConfig
 import com.offerpilot.core.parser.UberDriverAdapter
 import com.offerpilot.core.rules.OfferEvaluator
@@ -53,6 +56,8 @@ class OfferMonitorService : AccessibilityService() {
         private const val MAX_AUTO_SNAPSHOTS = 30
         /** 持续抓取：两份快照之间的最短间隔，以及每个会话的上限。 */
         private const val RECORD_MIN_INTERVAL_MS = 1000L
+        /** 两次 OCR 截图之间的最小间隔（系统对 takeScreenshot 也有频率限制）。 */
+        private const val OCR_MIN_INTERVAL_MS = 800L
         const val RECORD_MAX_COUNT = 1000
 
         private var instanceRef = WeakReference<OfferMonitorService>(null)
@@ -70,6 +75,7 @@ class OfferMonitorService : AccessibilityService() {
     private lateinit var speaker: Speaker
     private lateinit var haptics: Haptics
     private lateinit var snapshots: SnapshotStore
+    private lateinit var ocr: ScreenOcr
     private val actionHandler: OfferActionHandler = NoOpOfferActionHandler
 
     // 仅在 worker 线程访问
@@ -98,6 +104,7 @@ class OfferMonitorService : AccessibilityService() {
         speaker = Speaker(this)
         haptics = Haptics(this)
         snapshots = SnapshotStore(this)
+        ocr = ScreenOcr(this) { r -> workHandler.post(r) }
         MonitorState.update { it.copy(serviceConnected = true) }
 
         val repo = (application as OfferPilotApp).settings
@@ -143,34 +150,101 @@ class OfferMonitorService : AccessibilityService() {
     private fun processFrame() {
         val s = settings
         if (!s.monitoringEnabled && recordDir == null) return
-        val started = SystemClock.elapsedRealtime()
         val now = System.currentTimeMillis()
         try {
-            val screen = reader.readScreen(s.targetPackages, now)
-            MonitorState.update { it.copy(targetInForeground = screen != null) }
-            if (recordDir != null && screen != null) recordFrame(screen, now)
+            val read = reader.read(s.targetPackages, now)
+            MonitorState.update { it.copy(targetInForeground = read != null) }
+            if (recordDir != null && read != null) recordFrame(read, now)
             if (!s.monitoringEnabled) return
-            val output = if (screen == null) {
-                pipeline.tracker.onFrame(com.offerpilot.core.parser.AdapterResult.NoOffer, now)
-                    .let { if (it is com.offerpilot.core.tracking.TrackerEvent.OfferGone) PipelineOutput.Clear else PipelineOutput.None }
-            } else {
-                pipeline.process(screen, now)
+
+            if (read == null) {
+                frameGeneration++
+                handle(pipeline.processResult(AdapterResult.NoOffer, now), s, now)
+                return
             }
-            MonitorState.update { it.copy(lastAdapterNote = adapter.lastDebug?.note) }
-            when (output) {
-                is PipelineOutput.Show -> {
-                    present(output, s)
-                    maybeAutoSnapshot(s, output)
-                    Log.d(TAG, "offer handled in ${SystemClock.elapsedRealtime() - started}ms: ${output.result.verdict}")
-                }
-                PipelineOutput.Clear -> clearOutputs()
-                is PipelineOutput.RecheckLater -> scheduleRead(output.delayMs)
-                PipelineOutput.None -> Unit
+            val adapted = adapter.extract(read.screen)
+            val nodeOfferComplete = adapted is AdapterResult.Offer && adapted.complete
+            val region = if (!nodeOfferComplete && s.ocrEnabled) hiddenOfferRegion(read) else null
+            if (region == null) {
+                frameGeneration++
+                MonitorState.update { it.copy(lastAdapterNote = adapter.lastDebug?.note) }
+                handle(pipeline.processResult(adapted, now), s, now)
+            } else {
+                // 节点被隐藏：不把"空帧"喂给跟踪器（否则会误判订单消失），改走 OCR。
+                requestOcr(region, read.screen.packageName)
             }
         } catch (t: Throwable) {
             // 安全降级：任何解析/读取异常都只记录，不输出结论、不重试轰炸
             Log.w(TAG, "frame failed", t)
             clearOutputs()
+        }
+    }
+
+    /**
+     * 判断是否"疑似有订单弹窗但节点读不到"，返回需要 OCR 的屏幕区域，否则 null。
+     *
+     * 真机快照（Android 15）显示：Uber 在前台弹出订单时，整个界面层从无障碍树里消失，只剩地图。
+     * 另外，Uber 在后台时会在其他应用上方显示自己的窗口（非 application 类型）。
+     */
+    private fun hiddenOfferRegion(read: NodeReader.ScreenRead): Rect? {
+        val dm = resources.displayMetrics
+        val bigOverlay = read.windows.firstOrNull {
+            !it.isApplication && it.bounds.width() >= dm.widthPixels / 2 && it.bounds.height() >= dm.heightPixels / 6
+        }
+        if (bigOverlay != null) return bigOverlay.bounds
+        val app = read.windows.firstOrNull { it.isApplication } ?: return null
+        return if (read.screen.nodes.isEmpty()) app.bounds else null
+    }
+
+    // ---------------- OCR ----------------
+
+    private var ocrInFlight = false
+    private var lastOcrAt = 0L
+    private var frameGeneration = 0L
+    private var lastOcrLines: List<String> = emptyList()
+    private var lastOcrLinesAt = 0L
+
+    /** worker 线程。最小间隔 [OCR_MIN_INTERVAL_MS]，同一时间只跑一个。 */
+    private fun requestOcr(region: Rect, pkg: String) {
+        if (ocrInFlight) return
+        val wait = OCR_MIN_INTERVAL_MS - (SystemClock.elapsedRealtime() - lastOcrAt)
+        if (wait > 0) { scheduleRead(wait); return }
+        ocrInFlight = true
+        lastOcrAt = SystemClock.elapsedRealtime()
+        val gen = frameGeneration
+        val started = SystemClock.elapsedRealtime()
+        ocr.recognize(region, pkg) { screen ->
+            ocrInFlight = false
+            val s = settings
+            try {
+                // 识别期间弹窗已消失（出现过正常节点帧）→ 丢弃，避免输出过期结论
+                if (screen != null && gen == frameGeneration && s.monitoringEnabled) {
+                    lastOcrLines = screen.nodes.map { it.text }
+                    lastOcrLinesAt = System.currentTimeMillis()
+                    val adapted = adapter.extract(screen)
+                    MonitorState.update { it.copy(lastAdapterNote = "OCR：" + (adapter.lastDebug?.note ?: "")) }
+                    val now = System.currentTimeMillis()
+                    handle(pipeline.processResult(adapted, now), s, now)
+                    Log.d(TAG, "ocr frame in ${SystemClock.elapsedRealtime() - started}ms, ${screen.nodes.size} lines")
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "ocr handling failed", t)
+            }
+            // 弹窗期间 Uber 不一定持续发事件：主动再看一次，以便发现弹窗消失或内容变化
+            scheduleRead(OCR_MIN_INTERVAL_MS)
+        }
+    }
+
+    private fun handle(output: PipelineOutput, s: AppSettings, now: Long) {
+        when (output) {
+            is PipelineOutput.Show -> {
+                present(output, s)
+                maybeAutoSnapshot(s, output)
+                Log.d(TAG, "offer ${output.offer.source}: ${output.result.verdict}")
+            }
+            PipelineOutput.Clear -> clearOutputs()
+            is PipelineOutput.RecheckLater -> scheduleRead(output.delayMs)
+            PipelineOutput.None -> Unit
         }
     }
 
@@ -248,16 +322,18 @@ class OfferMonitorService : AccessibilityService() {
     }
 
     /** worker 线程：画面文字有变化才保存，避免地图动画导致的重复。 */
-    private fun recordFrame(screen: com.offerpilot.core.model.ScreenText, now: Long) {
+    private fun recordFrame(read: NodeReader.ScreenRead, now: Long) {
         val dir = recordDir ?: return
-        val hash = screen.nodes.fold(17) { h, n -> 31 * h + n.text.hashCode() + 7 * (n.bounds?.hashCode() ?: 0) }
+        val hash = read.signature
         if (hash == recordLastHash) return
         if (now - recordLastAt < RECORD_MIN_INTERVAL_MS) {
             // 稍后再读一次，保证变化后的最终画面也能被保存
             scheduleRead(RECORD_MIN_INTERVAL_MS - (now - recordLastAt))
             return
         }
-        val file = runCatching { snapshots.capture(settings.targetPackages, "record", adapter.lastDebug, into = dir) }
+        val file = runCatching {
+            snapshots.capture(settings.targetPackages, "record", adapter.lastDebug, into = dir, ocrLines = recentOcrLines())
+        }
             .onFailure { Log.w(TAG, "record failed", it) }.getOrNull() ?: return
         if (settings.snapshotScreenshot) captureScreenshot(file)
         recordLastHash = hash
@@ -266,6 +342,9 @@ class OfferMonitorService : AccessibilityService() {
         publishRecording()
         if (recordCount >= RECORD_MAX_COUNT) stopRecording()
     }
+
+    private fun recentOcrLines(): List<String>? =
+        lastOcrLines.takeIf { System.currentTimeMillis() - lastOcrLinesAt < 3_000 }
 
     private fun publishRecording() {
         val dir = recordDir ?: return
@@ -287,7 +366,7 @@ class OfferMonitorService : AccessibilityService() {
     /** worker 线程。 */
     private fun takeSnapshotNow(reason: String) {
         val s = settings
-        val file = runCatching { snapshots.capture(s.targetPackages, reason, adapter.lastDebug) }
+        val file = runCatching { snapshots.capture(s.targetPackages, reason, adapter.lastDebug, ocrLines = recentOcrLines()) }
             .onFailure { Log.w(TAG, "snapshot failed", it) }.getOrNull() ?: return
         MonitorState.update { it.copy(lastSnapshotPath = file.absolutePath) }
         if (s.snapshotScreenshot) captureScreenshot(file)
@@ -346,6 +425,7 @@ class OfferMonitorService : AccessibilityService() {
         if (::overlay.isInitialized) overlay.hideBadge()
         MonitorState.update { it.copy(recording = null) }
         if (::speaker.isInitialized) speaker.shutdown()
+        if (::ocr.isInitialized) runCatching { ocr.close() }
         if (::worker.isInitialized) worker.quitSafely()
         scope.cancel()
         MonitorState.update { it.copy(serviceConnected = false, targetInForeground = false) }

@@ -26,7 +26,13 @@ class SnapshotStore(private val service: AccessibilityService) {
 
     val dir: File get() = File(service.getExternalFilesDir(null), "snapshots").apply { mkdirs() }
 
-    fun capture(targets: Set<String>, reason: String, adapterDebug: AdapterDebug?, into: File = dir): File? {
+    fun capture(
+        targets: Set<String>,
+        reason: String,
+        adapterDebug: AdapterDebug?,
+        into: File = dir,
+        ocrLines: List<String>? = null,
+    ): File? {
         val json = JSONObject()
         json.put("app", "OfferPilot")
         json.put("format", 1)
@@ -43,6 +49,7 @@ class SnapshotStore(private val service: AccessibilityService) {
                 put("durationMin", JSONArray(it.durationCandidates))
             })
         }
+        ocrLines?.let { json.put("ocrLines", JSONArray(it)) }
         val windows = JSONArray()
         var hasTarget = false
         for (w in runCatching { service.windows }.getOrNull().orEmpty()) {

@@ -34,6 +34,7 @@ class SettingsRepository(private val context: Context) {
         val tts = booleanPreferencesKey("tts_enabled")
         val vibration = booleanPreferencesKey("vibration_enabled")
         val overlay = booleanPreferencesKey("overlay_enabled")
+        val ocr = booleanPreferencesKey("ocr_enabled")
         val volume = floatPreferencesKey("tts_volume")
         val overlayPos = stringPreferencesKey("overlay_position")
         val overlaySec = intPreferencesKey("overlay_seconds")
@@ -66,6 +67,7 @@ class SettingsRepository(private val context: Context) {
             ttsEnabled = this[K.tts] ?: d.ttsEnabled,
             vibrationEnabled = this[K.vibration] ?: d.vibrationEnabled,
             overlayEnabled = this[K.overlay] ?: d.overlayEnabled,
+            ocrEnabled = this[K.ocr] ?: d.ocrEnabled,
             ttsVolume = this[K.volume] ?: d.ttsVolume,
             overlayPosition = this[K.overlayPos]?.let { runCatching { OverlayPosition.valueOf(it) }.getOrNull() } ?: d.overlayPosition,
             overlaySeconds = this[K.overlaySec] ?: d.overlaySeconds,
@@ -96,6 +98,7 @@ class SettingsRepository(private val context: Context) {
             p[K.tts] = n.ttsEnabled
             p[K.vibration] = n.vibrationEnabled
             p[K.overlay] = n.overlayEnabled
+            p[K.ocr] = n.ocrEnabled
             p[K.volume] = n.ttsVolume
             p[K.overlayPos] = n.overlayPosition.name
             p[K.overlaySec] = n.overlaySeconds
