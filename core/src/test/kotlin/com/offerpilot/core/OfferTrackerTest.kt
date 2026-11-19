@@ -70,7 +70,7 @@ class OfferTrackerTest {
         assertEquals("净 $31/h", OfferMessages.overlay(o3, r3, Lang.ZH))
         assertEquals("无法识别", OfferMessages.overlay(offer(7.0, null, 10.0), ev.evaluate(offer(7.0, null, 10.0)), Lang.ZH))
         assertEquals("净 -$4/h", OfferMessages.overlay(offer(3.0, 20.0, 30.0), ev.evaluate(offer(3.0, 20.0, 30.0)), Lang.ZH)) // (2.55-4.72)/0.5
-        assertEquals("7块，3公里，比较赚。", OfferMessages.speech(o3, r3, Lang.ZH))
+        assertEquals("7块，3公里，无脑接。", OfferMessages.speech(o3, r3, Lang.ZH))
         assertEquals("订单信息不完整。", OfferMessages.speech(offer(null, 3.0, 10.0), ev.evaluate(offer(null, 3.0, 10.0)), Lang.ZH))
         // English (default)
         assertEquals("Net $1/h", OfferMessages.overlay(o1, r1))

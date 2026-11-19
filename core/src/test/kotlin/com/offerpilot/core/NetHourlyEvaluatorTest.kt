@@ -107,12 +107,12 @@ class NetHourlyEvaluatorTest {
     // ---- Default: tip-free pay = shown price × 85% ----
     @Test fun tip_free_share_default() {
         val d = OfferEvaluator()
-        // case C: tip-free 5.95; required 3.71; ratio 1.60 → green
+        // case C: tip-free 5.95; required 3.71; ratio 1.60 → blue (≥ 1.5)
         val c = d.evaluate(offer(7.0, 3.0, 10.0))
         near(5.95, c.basePay)
         near(1.60, c.ratio)
         near(31.45, c.netHourly)
-        assertEquals(Verdict.GOOD, c.verdict)
+        assertEquals(Verdict.GREAT, c.verdict)
         // case B: tip-free 28.06 < required 28.57 → red
         assertEquals(Verdict.LOSS, d.evaluate(offer(33.01, 40.99, 63.0)).verdict)
     }

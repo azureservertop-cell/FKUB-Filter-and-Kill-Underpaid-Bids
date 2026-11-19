@@ -80,7 +80,7 @@ class UberDriverAdapterTest {
     @Test fun eta_away_is_not_trip_duration() {
         val o = assertIs<AdapterResult.Offer>(adapter.extract(screen("$7.00", "3 min away", "10 min (3 km) total", "Accept"))).offer
         assertEquals(10.0, o.durationMinutes)
-        assertEquals(Verdict.GOOD, ev.evaluate(o).verdict)
+        assertEquals(Verdict.GREAT, ev.evaluate(o).verdict)
     }
 
     @Test fun incomplete_offer_with_accept_button() {

@@ -46,8 +46,8 @@ class OfferEvaluatorTest {
 
     // ---- Boundaries ----
     @Test fun tier_boundaries() {
-        assertEquals(Verdict.GREAT, ev.evaluate(offer(14.4, 10.0, 10.0)).verdict)   // ratio 1.8
-        assertEquals(Verdict.GOOD, ev.evaluate(offer(14.39, 10.0, 10.0)).verdict)
+        assertEquals(Verdict.GREAT, ev.evaluate(offer(12.0, 10.0, 10.0)).verdict)   // ratio 1.5
+        assertEquals(Verdict.GOOD, ev.evaluate(offer(11.99, 10.0, 10.0)).verdict)
         assertEquals(Verdict.LOSS, ev.evaluate(offer(2.35, 10.0, 10.0)).verdict)     // below cost
     }
 
