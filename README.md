@@ -1,123 +1,138 @@
 # FKUB · Filter & Kill Underpaid Bids
 
-> Uber Eats 智能订单筛选助手：筛掉低价单，报价好坏司机说了算。（内部代号 OfferPilot，包名 `com.offerpilot.app` 保持不变以便覆盖安装。）
+**English** · [中文](README.zh-CN.md)
 
-Android 11–15（优先 Android 15）· Kotlin · Jetpack Compose · 无需 Root
+> An Android helper for Uber Eats couriers: it reads each delivery offer, checks it against your own numbers and tells you at a glance whether it's worth taking. (Internal codename OfferPilot; the package id stays `com.offerpilot.app` so updates install over older builds.)
 
-Uber Driver 弹出配送订单时，OfferPilot 通过无障碍服务读取报价、距离和时间，按你的个人规则计算，并在订单消失前用**语音 / 悬浮提示 / 震动**给出建议。
+Android 11–15 (tested on Android 15) · Kotlin · Jetpack Compose · no root
 
-> **只识别、只建议，不会点击。** 第一版不执行任何自动接单或拒单，无障碍配置里也没有声明手势能力。全部计算在本地完成，应用没有网络权限。
+When Uber Driver pops up a delivery offer, FKUB reads the price, distance and time, evaluates them with your rules, and answers with a **coloured glow around the screen edge**, a small pill showing the estimated net hourly, a tier sound, an optional spoken verdict and vibration, all before the offer disappears.
 
-## 当前状态
+> **Recognition and advice only. It never taps anything.** There is no auto-accept or auto-reject, and the accessibility config declares no gesture capability. Everything is computed on the device and the app has no INTERNET permission.
 
-| 阶段 | 内容 | 状态 |
-|---|---|---|
-| Phase 0 | 项目、权限、无障碍服务、快照调试工具 | ✅ 真机验证结论：**订单弹窗出现时 Uber 把界面从无障碍树中隐藏，必须走 OCR** |
-| OCR | 节点被隐藏时无障碍截图 + ML Kit 本地识别（只裁 Uber 窗口） | ✅ 已实现，待真机验证 |
-| Phase 1 | 数据模型、解析器、规则引擎、设置、识别、语音 + 悬浮、去重 | ✅ 已完成；Uber 适配器标记为「待验证」 |
-| Phase 2+ | OCR 兜底、多样式适配、城外 / 返程、统计 | 未开始（返程公式已在引擎中实现并测试） |
+## Download
 
-**重要：** 截至目前还没有 Uber Driver 真实订单弹窗的控件快照。适配器 `UberDriverAdapter` 不使用任何控件 ID，只依赖「屏幕上同时出现金额 + 距离 + 时间」这一通用特征和可配置关键字，遇到歧义时宁可输出「无法判断」。拿到真机快照后需要按实际文字校准，见 [docs/PHASE0.md](docs/PHASE0.md)。
+On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https://github.com/azureservertop-cell/Offerpilot/releases/download/latest/FKUB-debug.apk). CI rebuilds it on every push to `main`.
 
-## 安装
+1. Install it (allow "install unknown apps").
+2. Open FKUB → **Status** → **Open accessibility settings** → turn on **FKUB**.
+   - On Android 13+ a sideloaded app's switch may be greyed out: Settings → Apps → FKUB → ⋮ (top right) → **Allow restricted settings**, then turn it on again.
+3. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI, overlay and speech to Chinese.
 
-1. 在手机上打开仓库的 **Releases → latest**，下载 `FKUB-debug.apk`（每次推送 main 后由 CI 自动更新；也可在 Actions 运行页的 Artifacts 下载）。
-2. 安装（需允许“安装未知应用”）。
-3. 打开 FKUB → 「状态」页 →「打开系统无障碍设置」→ 开启 **FKUB · 订单判断**。
-   - Android 13+ 侧载应用的开关如果是灰色：系统设置 → 应用 → OfferPilot → 右上角 ⋮ → **允许受限设置**，再回去开启。
-4. 确认 TTS 引擎支持中文（系统设置 → 文字转语音）。
+## How offers are read
 
-## 使用
+Phase 0 on a real device (Android 15) showed that **while an offer popup is up, Uber Driver hides its whole UI from the accessibility tree**. So FKUB:
 
-- **状态**：服务是否开启、是否正在监测 Uber Driver、最近一次识别结果；语音 / 震动 / 悬浮 / 音量 / 调试模式开关。
-- **规则**：油耗、维护费、油价、期望净时薪、最低订单金额、判定倍率；自动列出达标报价表；高级里可切换简单规则。
-- **模拟**：不用打开 Uber 就能测试规则（内置 PRD 案例 A/B/C），也可以粘贴屏幕文字测试适配器；服务开启时可以直接预览悬浮层和语音。
-- **调试**：目标包名、控件快照抓取 / 查看 / 分享 / 删除。
+1. watches window events from Uber Driver (`com.ubercab.driver`);
+2. when an offer is probably on screen but its text is hidden, takes an accessibility screenshot of **Uber's window only** (`takeScreenshotOfWindow` on Android 14+);
+3. runs ML Kit text recognition **on the device**; the bitmap is recycled right away and never saved;
+4. parses lines like `CA$5.50` / `including estimated tip` / `15 min (1.3 km) total` / `Accept`, repairing common OCR misreads (e.g. `CA$678` → `CA$6.78`).
 
-### 计算规则（默认）
+This works with Uber in the foreground and when Uber pops an offer over another app (maps, launcher, …). FKUB does not try to get around Uber hiding its UI.
 
-在「规则」页填：**百公里油耗**、**百公里维护费用**、油价、**期望每小时净赚**（默认 $18），以及**显示价中不含小费的比例**（默认 85%，约等于 15–18% 小费）。
+## Rules (default)
+
+On the **Rules** tab enter your car's **fuel consumption (L/100 km)**, **maintenance ($/100 km)**, fuel price, your **target net per hour** (default $18) and the **share of the shown price that isn't tip** (default 85%, roughly a 15–18% tip).
 
 ```
-不含小费价     = Uber 显示价（含预估小费）× 85%
-每公里车辆成本 = (百公里油耗 × 油价 + 百公里维护费) / 100
-达标价         = 公里 × 每公里车辆成本 + 小时 × 期望净时薪
-比值           = 不含小费价 / 达标价
+tip-free pay      = Uber's shown price (incl. estimated tip) × 85%
+vehicle cost / km = (L/100km × fuel price + maintenance per 100 km) / 100
+required pay      = km × vehicle cost/km + hours × target net hourly
+ratio             = tip-free pay / required pay
 
-🔴 红 不达标：比值 < 1（连车辆成本都不够时语音说"亏本"）
-🟡 黄 刚好达标：1 ≤ 比值 < 1.2，即不含小费也能净赚 $18/h
-🟢 绿 比较赚：1.2 ≤ 比值 < 1.8
-🔵 蓝 无脑接：比值 ≥ 1.8
-数据缺失 / 歧义 / 不合理 / 置信度低 / 过期 → 无法判断（不发光，只显示灰色小字）
+🔴 red    below target : ratio < 1 (spoken as "losing money" if it doesn't even cover vehicle cost)
+🟡 yellow meets target : 1 ≤ ratio < 1.2, i.e. $18/h net even with no tip
+🟢 green  good pay     : 1.2 ≤ ratio < 1.8
+🔵 blue   must take    : ratio ≥ 1.8
+missing / ambiguous / implausible / low confidence / stale → unknown (no glow, grey pill)
 ```
 
-结论以**屏幕边缘荧光**显示（整圈发光、不可点击），同时可选文字小条、语音和震动。85%、1.2、1.8 都可以手动调。「规则」页会根据你的车自动列出不同时长/距离下，Uber 至少要显示多少钱才进入每一档。
+85%, 1.2 and 1.8 are all adjustable. The Rules tab also lists, for your car, the minimum price Uber has to show for each tier at different times and distances.
 
-默认值（油耗 10 L/100km、油价 $1.36/L、维护 $10/100km → $0.236/km；$18/h → $0.30/分钟；不含小费 85%）：
+Defaults (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $18/h → $0.30/min; 85% tip-free):
 
-| 订单 | 显示价 · 距离 · 时间 | 不含小费 | 达标价 | 比值 | 预计净时薪 | 结论 |
+| Offer | Shown · distance · time | Tip-free | Required | Ratio | Est. net hourly | Verdict |
 |---|---|---|---|---|---|---|
-| A | $9 · 29.92km · 42min | $7.65 | $19.66 | 0.39 | $0.84/h | 🔴 不达标 |
-| B | $33.01 · 40.99km · 63min | $28.06 | $28.57 | 0.98 | $17.51/h | 🔴 不达标（差 $0.60） |
-| C | $7 · 3km · 10min | $5.95 | $3.71 | 1.60 | $31.45/h | 🟢 比较赚 |
-| 真实 | $5.50 · 1.3km · 15min | $4.68 | $4.81 | 0.97 | $17.47/h | 🔴 不达标（差 $0.16） |
+| A | $9 · 29.92 km · 42 min | $7.65 | $19.66 | 0.39 | $0.84/h | 🔴 below target |
+| B | $33.01 · 40.99 km · 63 min | $28.06 | $28.57 | 0.98 | $17.51/h | 🔴 below target (short by $0.60) |
+| C | $7 · 3 km · 10 min | $5.95 | $3.71 | 1.60 | $31.45/h | 🟢 good pay |
+| Real | $5.50 · 1.3 km · 15 min | $4.68 | $4.81 | 0.97 | $17.47/h | 🔴 below target (short by $0.16) |
 
-「规则」页的「高级」里可以切回 PRD 3.1 的简单规则 `max(公里 × $0.80, 分钟 × $0.50)`（同样先扣小费）。
+Under **Advanced** you can switch to the simple rule from the original spec, `max(km × $0.80, min × $0.50)` (also applied to the tip-free pay).
 
-这是你自己的筛选规则，不是 Uber 官方报酬标准。最低工资保障按结算周期计算，没有加进单笔报价。
+These are your personal filter rules, not Uber's pay standard. Minimum-earnings guarantees are calculated per pay period and are not included in single offers.
 
-## 架构
+## Alerts
+
+| Tier | Edge glow | Sound (built-in) | Vibration |
+|---|---|---|---|
+| 🔵 must take | blue | meme air horn | three pulses |
+| 🟢 good pay | green | coin | one pulse |
+| 🟡 meets target | yellow | none | two pulses |
+| 🔴 below target | red | wet fart | one long |
+
+The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's sound can be turned off, given its own volume, previewed or replaced with your own audio file. Built-in clips come from free asset packs, see [SOUND_CREDITS.md](SOUND_CREDITS.md).
+
+## App tabs
+
+- **Status**: language, service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
+- **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
+- **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
+- **Debug**: target package, continuous capture (one tap to start, one to stop, zipped for sharing), single snapshots, capture list.
+
+## Architecture
 
 ```
-core/   纯 Kotlin/JVM，不依赖 Android，可直接单元测试
-  model/     DeliveryOffer、EvaluationResult、Verdict、ScreenText
-  parser/    OfferParser（金额/距离/时间）、OfferAdapter、UberDriverAdapter（待验证）
-  rules/     OfferEvaluator、EvaluatorSettings
-  tracking/  OfferTracker（去重、不完整订单等待、消失即失效）
-  format/    OfferMessages（悬浮 / 语音文案）
-  OfferPipeline  识别 → 跟踪 → 计算
+core/   pure Kotlin/JVM, no Android dependency, unit-tested
+  model/     DeliveryOffer, EvaluationResult, Verdict, ScreenText
+  parser/    OfferParser (money / distance / time, OCR repair), OfferAdapter, UberDriverAdapter
+  rules/     OfferEvaluator, EvaluatorSettings
+  tracking/  OfferTracker (dedupe, settle time for incomplete offers, withdraw when gone)
+  format/    OfferMessages (pill / speech / detail text, English + Chinese)
+  i18n/      Lang
+  OfferPipeline  recognize → track → evaluate
 
 app/    Android
-  accessibility/  OfferMonitorService、NodeReader、MonitorState
-  overlay/        OverlayController（TYPE_ACCESSIBILITY_OVERLAY，不可触摸）
-  speech/         Speaker（TextToSpeech，导航语音通道）
-  feedback/       Haptics
-  settings/       AppSettings、SettingsRepository（DataStore）
-  debug/          SnapshotStore（控件快照）
-  capture/        OcrFallback 接口（Phase 2，未实现）
-  action/         OfferActionHandler（只有 NoOp 实现）
-  ui/             Compose 界面
+  accessibility/  OfferMonitorService, NodeReader, MonitorState
+  capture/        ScreenOcr (accessibility screenshot + ML Kit)
+  overlay/        OverlayController, EdgeGlowView (TYPE_ACCESSIBILITY_OVERLAY, not touchable)
+  feedback/       SoundPlayer, Haptics
+  speech/         Speaker (TextToSpeech on the navigation-guidance channel)
+  settings/       AppSettings, SettingsRepository (DataStore)
+  debug/          SnapshotStore
+  action/         OfferActionHandler (no-op only)
+  ui/             Compose screens
 ```
 
-`OfferEvaluator` 只接收 `DeliveryOffer`，与无障碍服务完全解耦；Uber 改版时只需调整 `UberDriverAdapter` / `UberAdapterConfig`。
+`OfferEvaluator` only takes a `DeliveryOffer` and knows nothing about accessibility; when Uber changes its UI only `UberDriverAdapter` / `UberAdapterConfig` need updating. The adapter uses no view IDs.
 
-### 安全降级
+### Failing safe
 
-- 只读取目标包名（默认 `com.ubercab.driver`，可在调试页修改）窗口的文字；其他应用只看包名，用来判断“已离开 Uber”。
-- 价格 / 距离 / 时间任一缺失、出现多个无法区分的候选、多个接单按钮、数值不合理（≤0、超大、平均速度 > 130 km/h）、置信度 < 0.6、数据超过 30 秒 → 「无法判断」。
-- 订单弹窗消失或切到其他应用 → 立即撤下悬浮提示并停止语音。
-- 同一订单 20 秒内不重复播报；字段不完整时先等 0.7 秒看是否补全，避免先报“不完整”再报结论。
-- 事件节流（每 150ms 最多读一次）、后台线程读取、节点数上限 1500，任何异常都只记录并降级，不影响 Uber Driver。
+- Only target-app windows are read; other apps are seen by package name only, to notice that you left Uber. OCR captures only Uber's window.
+- Missing price / distance / time, indistinguishable candidates, several accept buttons, implausible values (≤ 0, huge, average speed > 130 km/h), confidence < 0.6 or data older than 30 s → **unknown**.
+- When the popup disappears or you switch apps, the glow and pill are removed and speech stops immediately.
+- The same offer isn't announced twice within 20 s; incomplete offers get 0.7 s to fill in before "incomplete" is reported.
+- Events are throttled (≤ 1 read per 150 ms), nodes are read on a worker thread with a 1500-node cap, OCR runs at most every 0.8 s, and every error degrades to "no offer" without affecting Uber Driver.
 
-## 构建
+## Building
 
 ```bash
-./gradlew :core:test              # 核心单元测试（只需 JDK 17+）
-./gradlew :app:assembleDebug      # 需要 Android SDK 35
+./gradlew :core:test              # core unit tests (JDK 17+ only)
+./gradlew :app:assembleDebug      # needs Android SDK 35
 ```
 
-CI（`.github/workflows/android.yml`）在每次推送时跑测试并产出 APK。
+CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishes it to the `latest` release on every push to `main`.
 
-## 测试
+## Tests
 
-`core/src/test` 共 65 个单元测试，覆盖 PRD 10.1 全部项目：`$9.00` 价格提取、`29.92 km` 距离、`1 hr 3 min` 时长、英里换算、缺失值、错误格式、负数 / 零 / 超大值、多个金额、公式边界（ratio 恰为 1.0 / 1.2）、返程成本，以及适配器歧义处理、去重、订单消失、文案。
+`core/src/test` has 67 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, and the English / Chinese messages.
 
-PRD 10.2 的集成测试（真实弹窗识别、切 App、权限撤销等）需要真机，见 [docs/PHASE0.md](docs/PHASE0.md) 的验证清单。
+Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 
-## 隐私
+## Privacy
 
-无网络权限；默认不保存截图；快照只在你主动操作（或主动开启自动快照）时保存在本机 `Android/data/com.offerpilot.app/files/snapshots/`；不读取地址、姓名、订单号。
+No network permission. Screenshots are processed in memory and never saved by default. Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses, names and order numbers are not read.
 
-## 许可
+## Credits
 
-本项目参考了 GKD 的思路（监听界面 → 读取无障碍节点 → 匹配规则），但没有复制 GKD 代码。
+The approach (watch UI events → read accessibility nodes → match rules) is inspired by GKD; no GKD code is used. Sound credits are in [SOUND_CREDITS.md](SOUND_CREDITS.md).

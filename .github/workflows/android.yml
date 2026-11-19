@@ -56,6 +56,6 @@ jobs:
           cp FKUB-debug.apk OfferPilot-debug.apk
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest FKUB-debug.apk OfferPilot-debug.apk \
-            --title "FKUB 最新构建 (${GITHUB_SHA::7})" \
-            --notes "main 分支自动构建的调试版 APK。只做识别与建议，不会自动点击。Uber 适配器尚待真机验证，见 docs/PHASE0.md。" \
+            --title "FKUB latest build (${GITHUB_SHA::7})" \
+            --notes "Debug APK built automatically from main. Recognition and advice only; it never taps anything. English by default, Chinese in the app. 由 main 分支自动构建的调试版，App 内可切换中文。" \
             --prerelease

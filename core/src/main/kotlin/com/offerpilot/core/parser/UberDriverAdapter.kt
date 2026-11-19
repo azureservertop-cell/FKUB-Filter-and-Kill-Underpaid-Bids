@@ -34,7 +34,7 @@ class UberDriverAdapter(
 
     override fun extract(screen: ScreenText): AdapterResult {
         if (config.targetPackages.isNotEmpty() && screen.packageName !in config.targetPackages) {
-            lastDebug = AdapterDebug(note = "非目标应用 ${screen.packageName}")
+            lastDebug = AdapterDebug(note = "not a target app: ${screen.packageName}")
             return AdapterResult.NoOffer
         }
         var repairedPrice = false
@@ -67,7 +67,7 @@ class UberDriverAdapter(
         val offerPresent = allThree || (hasAccept && (money.isNotEmpty() || dist.isNotEmpty() || dur.isNotEmpty()))
         if (!offerPresent) {
             lastDebug = AdapterDebug(
-                note = "未检测到订单弹窗",
+                note = "no offer popup detected",
                 moneyCandidates = money.map { it.value },
                 distanceCandidates = dist.map { it.value },
                 durationCandidates = dur.map { it.value },
@@ -130,7 +130,7 @@ class UberDriverAdapter(
             issues = issues,
         )
         lastDebug = AdapterDebug(
-            note = "检测到订单弹窗（适配器${if (verified) "已验证" else "待验证"}）",
+            note = "offer popup detected (adapter ${if (verified) "verified" else "pending verification"})",
             moneyCandidates = money.map { it.value },
             distanceCandidates = dist.map { it.value },
             durationCandidates = dur.map { it.value },

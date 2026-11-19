@@ -1,6 +1,7 @@
 package com.offerpilot.core
 
 import com.offerpilot.core.format.OfferMessages
+import com.offerpilot.core.i18n.Lang
 import com.offerpilot.core.parser.AdapterResult
 import com.offerpilot.core.parser.UberDriverAdapter
 import com.offerpilot.core.rules.OfferEvaluator
@@ -61,16 +62,22 @@ class OfferTrackerTest {
     @Test fun pipeline_messages_match_prd_examples() {
         val ev = OfferEvaluator()
         val o1 = offer(9.0, 29.92, 42.0); val r1 = ev.evaluate(o1)
-        assertEquals("净 $1/h", OfferMessages.overlay(o1, r1))
-        assertEquals("9块，30公里，不达标。", OfferMessages.speech(o1, r1))
+        assertEquals("净 $1/h", OfferMessages.overlay(o1, r1, Lang.ZH))
+        assertEquals("9块，30公里，不达标。", OfferMessages.speech(o1, r1, Lang.ZH))
         val o2 = offer(33.01, 40.99, 63.0)
-        assertEquals("净 $18/h", OfferMessages.overlay(o2, ev.evaluate(o2)))
+        assertEquals("净 $18/h", OfferMessages.overlay(o2, ev.evaluate(o2), Lang.ZH))
         val o3 = offer(7.0, 3.0, 10.0); val r3 = ev.evaluate(o3)
-        assertEquals("净 $31/h", OfferMessages.overlay(o3, r3))
-        assertEquals("无法识别", OfferMessages.overlay(offer(7.0, null, 10.0), ev.evaluate(offer(7.0, null, 10.0))))
-        assertEquals("净 -$4/h", OfferMessages.overlay(offer(3.0, 20.0, 30.0), ev.evaluate(offer(3.0, 20.0, 30.0)))) // (2.55-4.72)/0.5
-        assertEquals("7块，3公里，比较赚。", OfferMessages.speech(o3, r3))
-        assertEquals("订单信息不完整。", OfferMessages.speech(offer(null, 3.0, 10.0), ev.evaluate(offer(null, 3.0, 10.0))))
+        assertEquals("净 $31/h", OfferMessages.overlay(o3, r3, Lang.ZH))
+        assertEquals("无法识别", OfferMessages.overlay(offer(7.0, null, 10.0), ev.evaluate(offer(7.0, null, 10.0)), Lang.ZH))
+        assertEquals("净 -$4/h", OfferMessages.overlay(offer(3.0, 20.0, 30.0), ev.evaluate(offer(3.0, 20.0, 30.0)), Lang.ZH)) // (2.55-4.72)/0.5
+        assertEquals("7块，3公里，比较赚。", OfferMessages.speech(o3, r3, Lang.ZH))
+        assertEquals("订单信息不完整。", OfferMessages.speech(offer(null, 3.0, 10.0), ev.evaluate(offer(null, 3.0, 10.0)), Lang.ZH))
+        // English (default)
+        assertEquals("Net $1/h", OfferMessages.overlay(o1, r1))
+        assertEquals("9 dollars, 30 kilometres, below target.", OfferMessages.speech(o1, r1))
+        assertEquals("Net -$4/h", OfferMessages.overlay(offer(3.0, 20.0, 30.0), ev.evaluate(offer(3.0, 20.0, 30.0))))
+        assertEquals("Unreadable", OfferMessages.overlay(offer(7.0, null, 10.0), ev.evaluate(offer(7.0, null, 10.0))))
+        assertEquals("Offer details incomplete.", OfferMessages.speech(offer(null, 3.0, 10.0), ev.evaluate(offer(null, 3.0, 10.0))))
     }
 
     @Test fun end_to_end_pipeline_other_app_clears() {

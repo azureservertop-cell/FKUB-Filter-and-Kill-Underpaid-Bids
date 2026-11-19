@@ -33,29 +33,31 @@ import com.offerpilot.app.settings.DEFAULT_TIER_SOUNDS
 import com.offerpilot.app.settings.SOUND_TIERS
 import com.offerpilot.app.settings.SettingsRepository
 import com.offerpilot.app.settings.TierSound
+import com.offerpilot.core.i18n.Lang
 import com.offerpilot.core.model.Verdict
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private fun tierTitle(v: Verdict) = when (v) {
-    Verdict.GREAT -> "🔵 无脑接"
-    Verdict.GOOD -> "🟢 比较赚"
-    Verdict.MIN_WAGE -> "🟡 刚好达标"
-    Verdict.LOSS -> "🔴 不达标"
-    Verdict.UNKNOWN -> "无法识别"
-}
+private fun tierTitle(v: Verdict, lang: Lang) = when (v) {
+    Verdict.GREAT -> "🔵 "
+    Verdict.GOOD -> "🟢 "
+    Verdict.MIN_WAGE -> "🟡 "
+    Verdict.LOSS -> "🔴 "
+    Verdict.UNKNOWN -> ""
+} + v.label(lang)
 
-private fun builtinName(v: Verdict) = when (v) {
-    Verdict.GREAT -> "内置：气笛嘟嘟嘟"
-    Verdict.GOOD -> "内置：金币"
-    Verdict.LOSS -> "内置：拉稀"
-    else -> "无内置音效，可选择文件"
+private fun builtinName(v: Verdict, lang: Lang) = when (v) {
+    Verdict.GREAT -> lang.t("Built-in: air horn", "内置：气笛嘟嘟嘟")
+    Verdict.GOOD -> lang.t("Built-in: coin", "内置：金币")
+    Verdict.LOSS -> lang.t("Built-in: wet fart", "内置：拉稀")
+    else -> lang.t("No built-in sound; pick a file", "无内置音效，可选择文件")
 }
 
 /** Sound settings: master switch + per-tier toggle, volume, preview, change file, reset. */
 @Composable
 fun SoundSection(s: AppSettings, repo: SettingsRepository) {
     val ctx = LocalContext.current
+    val lang = LocalLang.current
     val scope = rememberCoroutineScope()
     val player = remember { SoundPlayer(ctx.applicationContext) }
     DisposableEffect(Unit) { onDispose { player.release() } }
@@ -77,17 +79,17 @@ fun SoundSection(s: AppSettings, repo: SettingsRepository) {
         repo.update { it.copy(tierSounds = it.tierSounds + (v to f(it.tierSounds[v] ?: DEFAULT_TIER_SOUNDS.getValue(v)))) }
     }
 
-    Section("音效") {
-        SwitchRow("启用音效", s.soundEnabled, { v -> scope.launch { repo.update { it.copy(soundEnabled = v) } } }, "订单出现时按档位播放，之后才播语音")
+    Section(tr("Sounds", "音效")) {
+        SwitchRow(tr("Enable sounds", "启用音效"), s.soundEnabled, { v -> scope.launch { repo.update { it.copy(soundEnabled = v) } } }, tr("Plays per tier when an offer appears, before the spoken verdict", "订单出现时按档位播放，之后才播语音"))
         SOUND_TIERS.forEach { v ->
             val t = s.tierSounds[v] ?: DEFAULT_TIER_SOUNDS.getValue(v)
             HorizontalDivider()
             Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text(tierTitle(v), style = MaterialTheme.typography.titleSmall)
+                        Text(tierTitle(v, lang), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            if (t.customPath != null) "自定义文件" else builtinName(v),
+                            if (t.customPath != null) tr("Custom file", "自定义文件") else builtinName(v, lang),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -95,7 +97,7 @@ fun SoundSection(s: AppSettings, repo: SettingsRepository) {
                     Switch(checked = t.enabled, onCheckedChange = { on -> updTier(v) { it.copy(enabled = on) } }, enabled = s.soundEnabled)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("音量 ${(t.volume * 100).roundToInt()}%", Modifier.padding(end = 8.dp), style = MaterialTheme.typography.bodySmall)
+                    Text(tr("Volume ${(t.volume * 100).roundToInt()}%", "音量 ${(t.volume * 100).roundToInt()}%"), Modifier.padding(end = 8.dp), style = MaterialTheme.typography.bodySmall)
                     Slider(
                         value = t.volume, onValueChange = { vol -> updTier(v) { it.copy(volume = vol) } },
                         modifier = Modifier.weight(1f), enabled = s.soundEnabled && t.enabled,
@@ -105,13 +107,13 @@ fun SoundSection(s: AppSettings, repo: SettingsRepository) {
                     OutlinedButton(
                         onClick = { player.play(v, t.copy(enabled = true)) },
                         enabled = player.hasSound(v, t),
-                    ) { Text("试听") }
-                    TextButton(onClick = { pickingFor = v; picker.launch(arrayOf("audio/*")) }) { Text("换文件") }
+                    ) { Text(tr("Preview", "试听")) }
+                    TextButton(onClick = { pickingFor = v; picker.launch(arrayOf("audio/*")) }) { Text(tr("Change file", "换文件")) }
                     if (t.customPath != null) {
                         TextButton(onClick = {
                             SoundPlayer.deleteCustom(ctx, v)
                             updTier(v) { DEFAULT_TIER_SOUNDS.getValue(v).copy(volume = it.volume) }
-                        }) { Text("恢复默认") }
+                        }) { Text(tr("Reset", "恢复默认")) }
                     }
                 }
             }

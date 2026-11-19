@@ -30,41 +30,41 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     fun upd(f: (EvaluatorSettings) -> EvaluatorSettings) = scope.launch { repo.update { it.copy(evaluator = f(it.evaluator)) } }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Section("我的车") {
-            Text("填好这几项，就能自动算出什么样的单合适。", style = MaterialTheme.typography.bodySmall)
-            NumberField("百公里油耗（L/100km）", e.fuelLitersPer100Km, { v -> upd { it.copy(fuelLitersPer100Km = v) } })
-            NumberField("百公里维护费用（$/100km，保养、轮胎、折旧等）", e.maintenancePer100Km, { v -> upd { it.copy(maintenancePer100Km = v) } })
-            NumberField("汽油单价（$/L）", e.fuelPricePerLiter, { v -> upd { it.copy(fuelPricePerLiter = v) } })
-            Text("每公里车辆成本 ≈ ${OfferMessages.money(e.vehicleCostPerKm)}", style = MaterialTheme.typography.bodySmall)
+        Section(tr("My car", "我的车")) {
+            Text(tr("Fill these in and FKUB works out which offers are worth it.", "填好这几项，就能自动算出什么样的单合适。"), style = MaterialTheme.typography.bodySmall)
+            NumberField(tr("Fuel consumption (L/100 km)", "百公里油耗（L/100km）"), e.fuelLitersPer100Km, { v -> upd { it.copy(fuelLitersPer100Km = v) } })
+            NumberField(tr("Maintenance ($/100 km: servicing, tires, depreciation…)", "百公里维护费用（$/100km，保养、轮胎、折旧等）"), e.maintenancePer100Km, { v -> upd { it.copy(maintenancePer100Km = v) } })
+            NumberField(tr("Fuel price ($/L)", "汽油单价（$/L）"), e.fuelPricePerLiter, { v -> upd { it.copy(fuelPricePerLiter = v) } })
+            Text(tr("Vehicle cost per km ≈ ${OfferMessages.money(e.vehicleCostPerKm)}", "每公里车辆成本 ≈ ${OfferMessages.money(e.vehicleCostPerKm)}"), style = MaterialTheme.typography.bodySmall)
         }
 
-        Section("期望收入") {
-            NumberField("期望每小时净赚（$/h，已扣油费和维护）", e.targetNetHourly, { v -> upd { it.copy(targetNetHourly = v) } }, valid = { it >= 0 })
+        Section(tr("Target earnings", "期望收入")) {
+            NumberField(tr("Target net per hour ($/h, after fuel and maintenance)", "期望每小时净赚（$/h，已扣油费和维护）"), e.targetNetHourly, { v -> upd { it.copy(targetNetHourly = v) } }, valid = { it >= 0 })
             NumberField(
-                "显示价中不含小费的比例（%）", e.tipFreeShare * 100, { v -> upd { it.copy(tipFreeShare = v / 100) } },
+                tr("Share of shown price that isn't tip (%)", "显示价中不含小费的比例（%）"), e.tipFreeShare * 100, { v -> upd { it.copy(tipFreeShare = v / 100) } },
                 valid = { it in 10.0..100.0 },
             )
-            Text("Uber 显示的是含预估小费的价格。判断时只算不含小费的部分：显示价 × ${fmt(e.tipFreeShare * 100)}%。填 100 表示不扣。", style = MaterialTheme.typography.bodySmall)
-            NumberField("可接受的最低订单金额（$，0 = 不限）", e.minOrderAmount, { v -> upd { it.copy(minOrderAmount = v) } })
+            Text(tr("Uber's shown price includes the estimated tip. Only the tip-free part is judged: shown price × ${fmt(e.tipFreeShare * 100)}%. Enter 100 to not deduct anything.", "Uber 显示的是含预估小费的价格。判断时只算不含小费的部分：显示价 × ${fmt(e.tipFreeShare * 100)}%。填 100 表示不扣。"), style = MaterialTheme.typography.bodySmall)
+            NumberField(tr("Minimum order amount ($, 0 = no limit)", "可接受的最低订单金额（$，0 = 不限）"), e.minOrderAmount, { v -> upd { it.copy(minOrderAmount = v) } })
         }
 
-        Section("自动算出的标准") {
+        Section(tr("Your thresholds", "自动算出的标准")) {
             if (e.mode == RuleMode.NET_HOURLY) {
-                Text("达标价 = 公里 × ${OfferMessages.money(e.vehicleCostPerKm)} + 分钟 × ${OfferMessages.money(e.netPerMinute)}", style = MaterialTheme.typography.bodyMedium)
+                Text(tr("Required pay = km × ${OfferMessages.money(e.vehicleCostPerKm)} + min × ${OfferMessages.money(e.netPerMinute)}", "达标价 = 公里 × ${OfferMessages.money(e.vehicleCostPerKm)} + 分钟 × ${OfferMessages.money(e.netPerMinute)}"), style = MaterialTheme.typography.bodyMedium)
             } else {
-                Text("达标价 = max(公里 × ${OfferMessages.money(e.minPerKm)}, 分钟 × ${OfferMessages.money(e.minPerMinute)})", style = MaterialTheme.typography.bodyMedium)
+                Text(tr("Required pay = max(km × ${OfferMessages.money(e.minPerKm)}, min × ${OfferMessages.money(e.minPerMinute)})", "达标价 = max(公里 × ${OfferMessages.money(e.minPerKm)}, 分钟 × ${OfferMessages.money(e.minPerMinute)})"), style = MaterialTheme.typography.bodyMedium)
             }
             Text(
-                "比值 = 不含小费价 ÷ 达标价\n🔴 < 1：不达标　🟡 1 ~ ${fmt(e.goodRatio)}：刚好达标（$" + fmt(e.targetNetHourly) + "/h + 车辆成本）\n🟢 ${fmt(e.goodRatio)} ~ ${fmt(e.greatRatio)}：比较赚　🔵 ≥ ${fmt(e.greatRatio)}：无脑接",
+                tr("Ratio = tip-free pay ÷ required pay\n🔴 < 1: below target   🟡 1 ~ ${fmt(e.goodRatio)}: meets target ($", "比值 = 不含小费价 ÷ 达标价\n🔴 < 1：不达标　🟡 1 ~ ${fmt(e.goodRatio)}：刚好达标（$") + fmt(e.targetNetHourly) + tr("/h + vehicle cost)\n🟢 ${fmt(e.goodRatio)} ~ ${fmt(e.greatRatio)}: good pay   🔵 ≥ ${fmt(e.greatRatio)}: must take", "/h + 车辆成本）\n🟢 ${fmt(e.goodRatio)} ~ ${fmt(e.greatRatio)}：比较赚　🔵 ≥ ${fmt(e.greatRatio)}：无脑接"),
                 style = MaterialTheme.typography.bodySmall,
             )
-            Text("下表是 Uber 至少要显示多少钱（含小费）才进入该档：", style = MaterialTheme.typography.bodySmall)
+            Text(tr("Minimum price Uber has to show (tip included) to reach each tier:", "下表是 Uber 至少要显示多少钱（含小费）才进入该档："), style = MaterialTheme.typography.bodySmall)
             Row(Modifier.fillMaxWidth()) {
-                listOf("时间 / 距离", "🟡 起", "🟢 起", "🔵 起").forEach { Text(it, Modifier.weight(1f), fontWeight = FontWeight.Bold) }
+                listOf(tr("Time / distance", "时间 / 距离"), tr("🟡 from", "🟡 起"), tr("🟢 from", "🟢 起"), tr("🔵 from", "🔵 起")).forEach { Text(it, Modifier.weight(1f), fontWeight = FontWeight.Bold) }
             }
             EXAMPLES.forEach { (min, km) ->
                 Row(Modifier.fillMaxWidth()) {
-                    Text("${min.toInt()}分 / ${km.toInt()}km", Modifier.weight(1f))
+                    Text(tr("${min.toInt()} min / ${km.toInt()} km", "${min.toInt()}分 / ${km.toInt()}km"), Modifier.weight(1f))
                     Text(OfferMessages.money(e.displayedPriceFor(km, min, 1.0)), Modifier.weight(1f))
                     Text(OfferMessages.money(e.displayedPriceFor(km, min, e.goodRatio)), Modifier.weight(1f))
                     Text(OfferMessages.money(e.displayedPriceFor(km, min, e.greatRatio)), Modifier.weight(1f))
@@ -72,32 +72,32 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             }
         }
 
-        Section("档位阈值（可手动调整）") {
-            Text("比值 1.0 正好是不含小费时净赚 $" + fmt(e.targetNetHourly) + "/h，这是黄色的起点。", style = MaterialTheme.typography.bodySmall)
-            NumberField("🟢 绿色起点倍率", e.goodRatio, { v -> upd { it.copy(goodRatio = v) } }, valid = { it >= 1.0 && it <= e.greatRatio })
-            NumberField("🔵 蓝色起点倍率（无脑接）", e.greatRatio, { v -> upd { it.copy(greatRatio = v) } }, valid = { it >= e.goodRatio })
+        Section(tr("Tier thresholds (adjustable)", "档位阈值（可手动调整）")) {
+            Text(tr("Ratio 1.0 means exactly $", "比值 1.0 正好是不含小费时净赚 $") + fmt(e.targetNetHourly) + tr("/h net without tips: the start of yellow.", "/h，这是黄色的起点。"), style = MaterialTheme.typography.bodySmall)
+            NumberField(tr("🟢 Green starts at ratio", "🟢 绿色起点倍率"), e.goodRatio, { v -> upd { it.copy(goodRatio = v) } }, valid = { it >= 1.0 && it <= e.greatRatio })
+            NumberField(tr("🔵 Blue (must take) starts at ratio", "🔵 蓝色起点倍率（无脑接）"), e.greatRatio, { v -> upd { it.copy(greatRatio = v) } }, valid = { it >= e.goodRatio })
         }
 
-        Section("高级：简单规则模式") {
+        Section(tr("Advanced: simple rule mode", "高级：简单规则模式")) {
             SwitchRow(
-                "改用每公里 / 每分钟最低价", e.mode == RuleMode.PER_KM_PER_MINUTE,
+                tr("Use minimum per km / per minute instead", "改用每公里 / 每分钟最低价"), e.mode == RuleMode.PER_KM_PER_MINUTE,
                 { v -> upd { it.copy(mode = if (v) RuleMode.PER_KM_PER_MINUTE else RuleMode.NET_HOURLY) } },
-                "不按车辆成本计算，直接用 max(公里 × A, 分钟 × B)",
+                tr("Ignores vehicle cost and uses max(km × A, min × B)", "不按车辆成本计算，直接用 max(公里 × A, 分钟 × B)"),
             )
             if (e.mode == RuleMode.PER_KM_PER_MINUTE) {
-                NumberField("每公里最低报价（$/km）", e.minPerKm, { v -> upd { it.copy(minPerKm = v) } })
-                NumberField("每分钟最低报价（$/min）", e.minPerMinute, { v -> upd { it.copy(minPerMinute = v) } })
+                NumberField(tr("Minimum per km ($/km)", "每公里最低报价（$/km）"), e.minPerKm, { v -> upd { it.copy(minPerKm = v) } })
+                NumberField(tr("Minimum per minute ($/min)", "每分钟最低报价（$/min）"), e.minPerMinute, { v -> upd { it.copy(minPerMinute = v) } })
             }
         }
 
-        Section("城外订单") {
+        Section(tr("Out-of-town offers", "城外订单")) {
             SwitchRow(
-                "启用城外订单提醒", e.outOfTownAlert, { v -> upd { it.copy(outOfTownAlert = v) } },
-                "第二阶段功能：需要先在真机上确认能可靠读取终点文字，当前版本不会据此改变判断",
+                tr("Out-of-town alert", "启用城外订单提醒"), e.outOfTownAlert, { v -> upd { it.copy(outOfTownAlert = v) } },
+                tr("Phase 2 feature: needs real-device proof that the destination can be read reliably; it doesn't change verdicts yet", "第二阶段功能：需要先在真机上确认能可靠读取终点文字，当前版本不会据此改变判断"),
             )
         }
         OutlinedButton(onClick = { scope.launch { repo.update { it.copy(evaluator = EvaluatorSettings()) } } }) {
-            Text("恢复默认规则")
+            Text(tr("Reset rules to defaults", "恢复默认规则"))
         }
     }
 }

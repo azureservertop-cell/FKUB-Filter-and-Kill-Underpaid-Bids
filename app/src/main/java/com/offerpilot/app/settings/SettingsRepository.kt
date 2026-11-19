@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.offerpilot.core.i18n.Lang
 import com.offerpilot.core.rules.EvaluatorSettings
 import com.offerpilot.core.rules.RuleMode
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +46,7 @@ class SettingsRepository(private val context: Context) {
         val autoSnap = booleanPreferencesKey("auto_snapshot")
         val snapShot = booleanPreferencesKey("snapshot_screenshot")
         val targets = stringPreferencesKey("target_packages")
+        val language = stringPreferencesKey("language")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { it.toSettings() }
@@ -67,6 +69,7 @@ class SettingsRepository(private val context: Context) {
                 targetNetHourly = this[K.targetHourly] ?: e.targetNetHourly,
                 outOfTownAlert = this[K.outOfTown] ?: e.outOfTownAlert,
             ),
+            language = this[K.language]?.let { runCatching { Lang.valueOf(it) }.getOrNull() } ?: d.language,
             monitoringEnabled = this[K.monitoring] ?: d.monitoringEnabled,
             ttsEnabled = this[K.tts] ?: d.ttsEnabled,
             soundEnabled = this[K.sound] ?: d.soundEnabled,
@@ -128,6 +131,7 @@ class SettingsRepository(private val context: Context) {
             p[K.autoSnap] = n.autoSnapshot
             p[K.snapShot] = n.snapshotScreenshot
             p[K.targets] = n.targetPackages.joinToString(",")
+            p[K.language] = n.language.name
         }
     }
 }

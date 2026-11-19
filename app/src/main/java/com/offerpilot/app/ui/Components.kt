@@ -13,6 +13,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,7 +24,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.offerpilot.core.i18n.Lang
 import com.offerpilot.core.model.Verdict
+
+/** Current UI language, provided by MainActivity from the settings. */
+val LocalLang = staticCompositionLocalOf { Lang.EN }
+
+/** English / Chinese string for the current UI language. */
+@Composable
+@ReadOnlyComposable
+fun tr(en: String, zh: String): String = LocalLang.current.t(en, zh)
 
 @Composable
 fun Section(title: String, content: @Composable () -> Unit) {

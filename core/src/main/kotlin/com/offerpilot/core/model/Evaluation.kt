@@ -1,30 +1,42 @@
 package com.offerpilot.core.model
 
+import com.offerpilot.core.i18n.Lang
+
 /**
  * Verdict: four tiers (edge glow colour) + unknown.
  *  (ratio = tip-free pay ÷ required pay, required pay = vehicle cost + target net hourly × hours)
- *  - LOSS red: ratio < 1, tip-free pay doesn't cover target net hourly + vehicle cost (spoken as "亏本" when even vehicle cost isn't covered)
+ *  - LOSS red: ratio < 1, tip-free pay doesn't cover target net hourly + vehicle cost (spoken as "losing money" when even vehicle cost isn't covered)
  *  - MIN_WAGE yellow: 1 ≤ ratio < goodRatio, just meets the target
  *  - GOOD green: goodRatio ≤ ratio < greatRatio, pays well
  *  - GREAT blue: ratio ≥ greatRatio, must-take
  */
-enum class Verdict(val label: String, val shortLabel: String, val speech: String) {
-    LOSS("不达标", "不达标", "不达标"),
-    MIN_WAGE("刚好达标", "达标", "刚好达标"),
-    GOOD("比较赚", "比较赚", "比较赚"),
-    GREAT("无脑接", "无脑接", "无脑接"),
-    UNKNOWN("无法判断", "无法判断", "订单信息不完整"),
+enum class Verdict(
+    private val labelEn: String,
+    private val labelZh: String,
+    private val speechEn: String,
+    private val speechZh: String,
+) {
+    LOSS("Below target", "不达标", "below target", "不达标"),
+    MIN_WAGE("Meets target", "刚好达标", "meets target", "刚好达标"),
+    GOOD("Good pay", "比较赚", "good pay", "比较赚"),
+    GREAT("Must take", "无脑接", "must take", "无脑接"),
+    UNKNOWN("Unknown", "无法判断", "Offer details incomplete", "订单信息不完整");
+
+    fun label(lang: Lang = Lang.EN): String = lang.t(labelEn, labelZh)
+    fun speech(lang: Lang = Lang.EN): String = lang.t(speechEn, speechZh)
 }
 
 /** Why no verdict could be given. */
-enum class UnknownReason(val description: String) {
-    MISSING_PAYOUT("价格读取失败"),
-    MISSING_DISTANCE("距离读取失败"),
-    MISSING_DURATION("时间读取失败"),
-    IMPLAUSIBLE_VALUES("数据明显不合理"),
-    LOW_CONFIDENCE("识别置信度不足"),
-    AMBIGUOUS("存在多个候选值或多个订单"),
-    STALE("订单数据已过期"),
+enum class UnknownReason(private val en: String, private val zh: String) {
+    MISSING_PAYOUT("price not read", "价格读取失败"),
+    MISSING_DISTANCE("distance not read", "距离读取失败"),
+    MISSING_DURATION("time not read", "时间读取失败"),
+    IMPLAUSIBLE_VALUES("implausible values", "数据明显不合理"),
+    LOW_CONFIDENCE("low recognition confidence", "识别置信度不足"),
+    AMBIGUOUS("multiple candidate values or offers", "存在多个候选值或多个订单"),
+    STALE("offer data is stale", "订单数据已过期");
+
+    fun description(lang: Lang = Lang.EN): String = lang.t(en, zh)
 }
 
 data class EvaluationResult(

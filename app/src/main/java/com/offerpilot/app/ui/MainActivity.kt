@@ -11,6 +11,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -28,14 +29,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 val settings by repo.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
-                AppRoot(settings, repo)
+                CompositionLocalProvider(LocalLang provides settings.language) {
+                    AppRoot(settings, repo)
+                }
             }
         }
     }
 }
 
-private enum class Tab(val label: String, val glyph: String) {
-    HOME("状态", "●"), RULES("规则", "$"), MOCK("模拟", "▶"), DEBUG("调试", "⚙")
+private enum class Tab(val en: String, val zh: String, val glyph: String) {
+    HOME("Status", "状态", "●"), RULES("Rules", "规则", "$"), MOCK("Mock", "模拟", "▶"), DEBUG("Debug", "调试", "⚙")
 }
 
 @Composable
@@ -49,7 +52,7 @@ private fun AppRoot(settings: AppSettings, repo: com.offerpilot.app.settings.Set
                         selected = tab == i,
                         onClick = { tab = i },
                         icon = { Text(t.glyph) },
-                        label = { Text(t.label) },
+                        label = { Text(tr(t.en, t.zh)) },
                     )
                 }
             }

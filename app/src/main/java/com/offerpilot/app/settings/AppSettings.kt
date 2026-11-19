@@ -1,5 +1,6 @@
 package com.offerpilot.app.settings
 
+import com.offerpilot.core.i18n.Lang
 import com.offerpilot.core.model.Verdict
 import com.offerpilot.core.parser.UberAdapterConfig
 import com.offerpilot.core.rules.EvaluatorSettings
@@ -28,6 +29,8 @@ val DEFAULT_TIER_SOUNDS: Map<Verdict, TierSound> = mapOf(
 /** All user settings (persisted locally in DataStore). */
 data class AppSettings(
     val evaluator: EvaluatorSettings = EvaluatorSettings(),
+    /** App, overlay and speech language. English by default. */
+    val language: Lang = Lang.EN,
     /** Master switch: when paused the service stays connected but doesn't recognize or alert. */
     val monitoringEnabled: Boolean = true,
     val ttsEnabled: Boolean = true,

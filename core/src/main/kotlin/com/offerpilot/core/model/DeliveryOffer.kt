@@ -1,5 +1,7 @@
 package com.offerpilot.core.model
 
+import com.offerpilot.core.i18n.Lang
+
 /** Where the offer data came from. */
 enum class OfferSource { ACCESSIBILITY, OCR, MOCK }
 
@@ -26,13 +28,15 @@ data class DeliveryOffer(
 )
 
 /** Parse issues. Any of them prevents a confident recommendation. */
-enum class ParseIssue(val description: String) {
-    PAYOUT_MISSING("未读到报价"),
-    PAYOUT_AMBIGUOUS("出现多个无法区分的金额"),
-    DISTANCE_MISSING("未读到距离"),
-    DISTANCE_AMBIGUOUS("出现多个无法区分的距离"),
-    DURATION_MISSING("未读到时间"),
-    DURATION_AMBIGUOUS("出现多个无法区分的时间"),
-    MULTIPLE_OFFERS("同时识别到多个候选订单"),
-    ADAPTER_UNVERIFIED("适配规则尚未经真机验证"),
+enum class ParseIssue(private val en: String, private val zh: String) {
+    PAYOUT_MISSING("price not found", "未读到报价"),
+    PAYOUT_AMBIGUOUS("several indistinguishable amounts", "出现多个无法区分的金额"),
+    DISTANCE_MISSING("distance not found", "未读到距离"),
+    DISTANCE_AMBIGUOUS("several indistinguishable distances", "出现多个无法区分的距离"),
+    DURATION_MISSING("time not found", "未读到时间"),
+    DURATION_AMBIGUOUS("several indistinguishable times", "出现多个无法区分的时间"),
+    MULTIPLE_OFFERS("several candidate offers at once", "同时识别到多个候选订单"),
+    ADAPTER_UNVERIFIED("adapter rules not yet verified on a real device", "适配规则尚未经真机验证");
+
+    fun description(lang: Lang = Lang.EN): String = lang.t(en, zh)
 }

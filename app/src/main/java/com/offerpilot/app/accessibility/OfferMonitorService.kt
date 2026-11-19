@@ -118,6 +118,7 @@ class OfferMonitorService : AccessibilityService() {
                 val old = settings
                 settings = s
                 if (::sounds.isInitialized) sounds.prepare(s.tierSounds)
+                if (::speaker.isInitialized) speaker.setLanguage(s.language)
                 workHandler.post { rebuildPipeline(s) }
                 if (old.debugMode != s.debugMode || buttonCallback == null) updateAccessibilityButton(s.debugMode)
                 if (!s.monitoringEnabled) clearOutputs()
@@ -239,7 +240,7 @@ class OfferMonitorService : AccessibilityService() {
                     lastOcrLines = screen.nodes.map { it.text }
                     lastOcrLinesAt = System.currentTimeMillis()
                     val adapted = adapter.extract(screen)
-                    MonitorState.update { it.copy(lastAdapterNote = "OCR：" + (adapter.lastDebug?.note ?: "")) }
+                    MonitorState.update { it.copy(lastAdapterNote = "OCR: " + (adapter.lastDebug?.note ?: "")) }
                     val now = System.currentTimeMillis()
                     handle(pipeline.processResult(adapted, now), s, now)
                     Log.d(TAG, "ocr frame in ${SystemClock.elapsedRealtime() - started}ms, ${screen.nodes.size} lines")
@@ -266,14 +267,14 @@ class OfferMonitorService : AccessibilityService() {
     }
 
     private fun present(out: PipelineOutput.Show, s: AppSettings) {
-        val overlayText = OfferMessages.overlay(out.offer, out.result)
+        val overlayText = OfferMessages.overlay(out.offer, out.result, s.language)
         MonitorState.update {
             it.copy(
                 lastRecognition = LastRecognition(
                     timeMs = out.offer.timestamp,
                     success = out.result.isConclusive,
                     summary = overlayText,
-                    detail = OfferMessages.detail(out.offer, out.result),
+                    detail = OfferMessages.detail(out.offer, out.result, s.language),
                 )
             )
         }
@@ -286,7 +287,7 @@ class OfferMonitorService : AccessibilityService() {
         if (out.announce) {
             val soundMs = if (s.soundEnabled) sounds.play(out.result.verdict, s.tierSounds[out.result.verdict]) else 0L
             if (s.ttsEnabled) {
-                val text = OfferMessages.speech(out.offer, out.result)
+                val text = OfferMessages.speech(out.offer, out.result, s.language)
                 pendingSpeech?.let { mainHandler.removeCallbacks(it) }
                 val r = Runnable { pendingSpeech = null; speaker.speak(text, s.ttsVolume) }
                 pendingSpeech = r
@@ -383,7 +384,7 @@ class OfferMonitorService : AccessibilityService() {
         MonitorState.update {
             it.copy(recording = RecordingStatus(dir.name, recordStartedAt, recordCount, RECORD_MAX_COUNT))
         }
-        overlay.showBadge("● 抓取中 $recordCount")
+        overlay.showBadge(settings.language.t("● REC $recordCount", "● 抓取中 $recordCount"))
     }
 
     /** Called from the UI: capture the current screen after [delayMs] (time to switch to Uber). */
