@@ -1,0 +1,122 @@
+package com.offerpilot.core
+
+import com.offerpilot.core.model.ParseIssue
+import com.offerpilot.core.model.ReturnTrip
+import com.offerpilot.core.model.UnknownReason
+import com.offerpilot.core.model.Verdict
+import com.offerpilot.core.rules.EvaluatorSettings
+import com.offerpilot.core.rules.OfferEvaluator
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class OfferEvaluatorTest {
+    private val ev = OfferEvaluator()
+    private fun near(expected: Double, actual: Double?, eps: Double = 0.005) =
+        assertTrue(actual != null && kotlin.math.abs(expected - actual) < eps, "expected $expected but was $actual")
+
+    // ---- PRD 3.3 测试案例 ----
+    @Test fun caseA_longCheap_notRecommended() {
+        val r = ev.evaluate(offer(9.0, 29.92, 42.0))
+        near(23.94, r.distanceRequirement)
+        near(21.0, r.timeRequirement)
+        near(23.94, r.requiredPrice)
+        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+    }
+
+    @Test fun caseB_walmartMultiStop_marginal() {
+        val r = ev.evaluate(offer(33.01, 40.99, 63.0))
+        near(32.79, r.distanceRequirement)
+        near(31.50, r.timeRequirement)
+        near(32.79, r.requiredPrice)
+        assertEquals(Verdict.MARGINAL, r.verdict)
+    }
+
+    @Test fun caseC_short_recommended() {
+        val r = ev.evaluate(offer(7.0, 3.0, 10.0))
+        near(2.40, r.distanceRequirement)
+        near(5.0, r.timeRequirement)
+        near(5.0, r.requiredPrice)
+        assertEquals(Verdict.RECOMMENDED, r.verdict)
+    }
+
+    // ---- 边界 ----
+    @Test fun ratio_exactly_1_is_marginal_and_1_2_is_recommended() {
+        assertEquals(Verdict.MARGINAL, ev.evaluate(offer(8.0, 10.0, 10.0)).verdict)   // req 8, ratio 1.0
+        assertEquals(Verdict.RECOMMENDED, ev.evaluate(offer(9.6, 10.0, 10.0)).verdict) // ratio 1.2
+        assertEquals(Verdict.NOT_RECOMMENDED, ev.evaluate(offer(7.99, 10.0, 10.0)).verdict)
+        assertEquals(Verdict.MARGINAL, ev.evaluate(offer(9.59, 10.0, 10.0)).verdict)
+    }
+
+    @Test fun custom_thresholds() {
+        val strict = OfferEvaluator(EvaluatorSettings(minPerKm = 1.0, minPerMinute = 0.6, goodRatio = 1.5))
+        val r = strict.evaluate(offer(7.0, 3.0, 10.0)) // req max(3, 6) = 6, ratio 1.17
+        assertEquals(Verdict.MARGINAL, r.verdict)
+    }
+
+    @Test fun min_order_amount() {
+        val s = OfferEvaluator(EvaluatorSettings(minOrderAmount = 8.0))
+        val r = s.evaluate(offer(7.0, 3.0, 10.0))
+        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertTrue(r.belowMinimumOrder)
+    }
+
+    // ---- 缺失 / 异常 ----
+    @Test fun missing_values_unknown() {
+        assertEquals(listOf(UnknownReason.MISSING_PAYOUT), ev.evaluate(offer(null, 3.0, 10.0)).unknownReasons)
+        assertEquals(listOf(UnknownReason.MISSING_DISTANCE), ev.evaluate(offer(7.0, null, 10.0)).unknownReasons)
+        assertEquals(listOf(UnknownReason.MISSING_DURATION), ev.evaluate(offer(7.0, 3.0, null)).unknownReasons)
+        val r = ev.evaluate(offer(null, null, null))
+        assertEquals(Verdict.UNKNOWN, r.verdict)
+        assertNull(r.ratio)
+    }
+
+    @Test fun zero_negative_huge_are_implausible() {
+        listOf(
+            offer(0.0, 3.0, 10.0), offer(-7.0, 3.0, 10.0), offer(7.0, 0.0, 10.0), offer(7.0, 3.0, 0.0),
+            offer(7.0, -3.0, 10.0), offer(99999.0, 3.0, 10.0), offer(7.0, 5000.0, 10.0), offer(7.0, 3.0, 10000.0),
+            offer(50.0, 100.0, 10.0), // 600 km/h
+            offer(Double.NaN, 3.0, 10.0),
+        ).forEach {
+            val r = ev.evaluate(it)
+            assertEquals(Verdict.UNKNOWN, r.verdict, "should be unknown: $it")
+            assertTrue(UnknownReason.IMPLAUSIBLE_VALUES in r.unknownReasons)
+        }
+    }
+
+    @Test fun low_confidence_unknown() {
+        val r = ev.evaluate(offer(7.0, 3.0, 10.0, confidence = 0.3f))
+        assertEquals(Verdict.UNKNOWN, r.verdict)
+        assertTrue(UnknownReason.LOW_CONFIDENCE in r.unknownReasons)
+    }
+
+    @Test fun ambiguity_issue_unknown() {
+        val o = offer(7.0, 3.0, 10.0).copy(issues = listOf(ParseIssue.MULTIPLE_OFFERS))
+        assertEquals(Verdict.UNKNOWN, ev.evaluate(o).verdict)
+    }
+
+    @Test fun stale_offer_unknown() {
+        val r = ev.evaluate(offer(7.0, 3.0, 10.0, ts = 0), nowMs = 60_000)
+        assertEquals(Verdict.UNKNOWN, r.verdict)
+        assertTrue(UnknownReason.STALE in r.unknownReasons)
+    }
+
+    // ---- 返程成本（PRD 6.2）----
+    @Test fun return_trip_cost() {
+        // 案例 B 加 20km / 20min 返程：max(60.99*0.8, 83*0.5) = 48.79 → ratio 0.68
+        val r = ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(20.0, 20.0))
+        near(48.79, r.requiredPrice)
+        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        // 返程 0 时与无返程一致
+        assertEquals(Verdict.MARGINAL, ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(0.0, 0.0)).verdict)
+    }
+
+    @Test fun vehicle_cost_display_only() {
+        // 10L/100km * 1.36 + 0.10 = 0.236 $/km → 29.92km = 7.06
+        val r = ev.evaluate(offer(9.0, 29.92, 42.0))
+        near(7.06, r.vehicleCost, 0.01)
+        near(1.94, r.netAfterVehicleCost, 0.01)
+        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict) // 车辆成本不改变判断公式
+    }
+}

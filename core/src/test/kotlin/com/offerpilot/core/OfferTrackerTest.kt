@@ -1,0 +1,81 @@
+package com.offerpilot.core
+
+import com.offerpilot.core.format.OfferMessages
+import com.offerpilot.core.parser.AdapterResult
+import com.offerpilot.core.parser.UberDriverAdapter
+import com.offerpilot.core.rules.OfferEvaluator
+import com.offerpilot.core.tracking.OfferTracker
+import com.offerpilot.core.tracking.TrackerEvent
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+class OfferTrackerTest {
+    private val a = AdapterResult.Offer(offer(9.0, 29.92, 42.0), complete = true)
+    private val c = AdapterResult.Offer(offer(7.0, 3.0, 10.0), complete = true)
+
+    @Test fun new_then_unchanged_then_gone() {
+        val t = OfferTracker()
+        assertIs<TrackerEvent.NewOffer>(t.onFrame(a, 0))
+        assertEquals(TrackerEvent.Unchanged, t.onFrame(a, 100))
+        assertIs<TrackerEvent.OfferGone>(t.onFrame(AdapterResult.NoOffer, 200))
+        assertEquals(TrackerEvent.Idle, t.onFrame(AdapterResult.NoOffer, 300))
+    }
+
+    @Test fun same_offer_reappearing_quickly_not_reannounced() {
+        val t = OfferTracker(dedupWindowMs = 20_000)
+        assertTrue(!(t.onFrame(a, 0) as TrackerEvent.NewOffer).suppressAnnouncement)
+        t.onFrame(AdapterResult.NoOffer, 500)
+        assertTrue((t.onFrame(a, 1_000) as TrackerEvent.NewOffer).suppressAnnouncement)
+        t.onFrame(AdapterResult.NoOffer, 1_500)
+        assertTrue(!(t.onFrame(a, 30_000) as TrackerEvent.NewOffer).suppressAnnouncement)
+    }
+
+    @Test fun different_offer_replaces() {
+        val t = OfferTracker()
+        t.onFrame(a, 0)
+        val e = assertIs<TrackerEvent.NewOffer>(t.onFrame(c, 100))
+        assertEquals(9.0, e.replaced?.estimatedPayout)
+        assertTrue(!e.suppressAnnouncement)
+    }
+
+    @Test fun incomplete_waits_for_settle() {
+        val t = OfferTracker(settleMs = 700)
+        val inc = AdapterResult.Offer(offer(9.0, null, null), complete = false)
+        assertEquals(TrackerEvent.PendingIncomplete, t.onFrame(inc, 0))
+        assertEquals(TrackerEvent.PendingIncomplete, t.onFrame(inc, 300))
+        assertIs<TrackerEvent.NewOffer>(t.onFrame(inc, 800))
+        // 后来补全 → 新结论
+        assertIs<TrackerEvent.NewOffer>(t.onFrame(a, 900))
+    }
+
+    @Test fun incomplete_that_completes_quickly_is_silent() {
+        val t = OfferTracker(settleMs = 700)
+        assertEquals(TrackerEvent.PendingIncomplete, t.onFrame(AdapterResult.Offer(offer(9.0, null, null), false), 0))
+        assertIs<TrackerEvent.NewOffer>(t.onFrame(a, 200))
+        // 完整订单展示期间的偶发不完整帧不改变结论
+        assertEquals(TrackerEvent.Unchanged, t.onFrame(AdapterResult.Offer(offer(9.0, null, null), false), 300))
+    }
+
+    @Test fun pipeline_messages_match_prd_examples() {
+        val ev = OfferEvaluator()
+        val o1 = offer(9.0, 29.92, 42.0); val r1 = ev.evaluate(o1)
+        assertEquals("不推荐 · $9 / 30km", OfferMessages.overlay(o1, r1))
+        assertEquals("9块，30公里，不推荐。", OfferMessages.speech(o1, r1))
+        val o2 = offer(33.01, 40.99, 63.0)
+        assertEquals("勉强合格 · $33 / 41km", OfferMessages.overlay(o2, ev.evaluate(o2)))
+        val o3 = offer(7.0, 3.0, 10.0); val r3 = ev.evaluate(o3)
+        assertEquals("推荐 · $7 / 3km", OfferMessages.overlay(o3, r3))
+        assertEquals("7块，3公里，可以考虑。", OfferMessages.speech(o3, r3))
+        assertEquals("订单信息不完整。", OfferMessages.speech(offer(null, 3.0, 10.0), ev.evaluate(offer(null, 3.0, 10.0))))
+    }
+
+    @Test fun end_to_end_pipeline_other_app_clears() {
+        val p = com.offerpilot.core.OfferPipeline(UberDriverAdapter(), OfferEvaluator())
+        val show = p.process(screen("$9.00", "42 min (29.92 km)", "Accept", ts = 0), 0)
+        assertIs<com.offerpilot.core.PipelineOutput.Show>(show)
+        // 切到其他应用 → 立即撤下结论
+        assertEquals(com.offerpilot.core.PipelineOutput.Clear, p.process(screen("$9.00", "42 min (29.92 km)", pkg = "com.google.android.apps.maps", ts = 100), 100))
+    }
+}
