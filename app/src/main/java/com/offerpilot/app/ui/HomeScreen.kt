@@ -38,7 +38,8 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     fun upd(f: (AppSettings) -> AppSettings) = scope.launch { repo.update(f) }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("OfferPilot", style = MaterialTheme.typography.headlineMedium)
+        Text("FKUB 反客优步", style = MaterialTheme.typography.headlineMedium)
+        Text("取「反客为主」之意：报价好坏，司机说了算。", style = MaterialTheme.typography.bodySmall)
         Text("只做识别与建议，不会替你接单或拒单。", style = MaterialTheme.typography.bodySmall)
 
         Section("运行状态") {
@@ -64,8 +65,8 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                     Text("打开系统无障碍设置")
                 }
                 Text(
-                    "在列表中找到「OfferPilot 订单判断」并开启。Android 13+ 侧载安装的应用如果开关是灰色的：" +
-                        "系统设置 → 应用 → OfferPilot → 右上角 ⋮ → 允许受限设置，然后再开启。",
+                    "在列表中找到「FKUB 反客优步 · 订单判断」并开启。Android 13+ 侧载安装的应用如果开关是灰色的：" +
+                        "系统设置 → 应用 → FKUB 反客优步 → 右上角 ⋮ → 允许受限设置，然后再开启。",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

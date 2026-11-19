@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OfferPilot</string>
-    <string name="accessibility_label">OfferPilot 订单判断</string>
+    <string name="app_name">FKUB 反客优步</string>
+    <string name="accessibility_label">FKUB 反客优步 · 订单判断</string>
     <string name="accessibility_description">读取 Uber Driver 订单弹窗中的报价、距离和时间，在本地计算并用语音和悬浮提示给出建议。只读取设置中的目标应用；不上传任何数据；不会替你点击接单或拒单。</string>
 </resources>
