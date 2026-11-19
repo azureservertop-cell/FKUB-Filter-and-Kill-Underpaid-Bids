@@ -2,14 +2,15 @@ package com.offerpilot.core.model
 
 /**
  * 判断结果：四档（屏幕边缘发光颜色）+ 无法判断。
- *  - LOSS 红：报价不够油费 + 维护，亏本
- *  - MIN_WAGE 黄：能回本，但比值 < goodRatio，大致只是最低工资水平
+ *  （比值 = 不含小费价 ÷ 达标价，达标价 = 车辆成本 + 期望净时薪 × 小时）
+ *  - LOSS 红：比值 < 1，不含小费价不够期望净时薪 + 车辆成本（连车辆成本都不够时语音说"亏本"）
+ *  - MIN_WAGE 黄：1 ≤ 比值 < goodRatio，刚好达标
  *  - GOOD 绿：goodRatio ≤ 比值 < greatRatio，比较赚
  *  - GREAT 蓝：比值 ≥ greatRatio，无脑接
  */
 enum class Verdict(val label: String, val shortLabel: String, val speech: String) {
-    LOSS("亏本", "亏本", "亏本"),
-    MIN_WAGE("最低工资水平", "保底", "只够最低工资"),
+    LOSS("不达标", "不达标", "不达标"),
+    MIN_WAGE("刚好达标", "达标", "刚好达标"),
     GOOD("比较赚", "比较赚", "比较赚"),
     GREAT("无脑接", "无脑接", "无脑接"),
     UNKNOWN("无法判断", "无法判断", "订单信息不完整"),
@@ -37,7 +38,9 @@ data class EvaluationResult(
     val vehicleCost: Double?,
     /** 报价 - 车辆成本，仅展示用。 */
     val netAfterVehicleCost: Double?,
-    /** 预计净时薪 =（报价 - 车辆成本）/ 小时（含返程时间）。 */
+    /** 不含小费价 = 显示价 × tipFreeShare。 */
+    val basePay: Double? = null,
+    /** 预计净时薪 =（不含小费价 - 车辆成本）/ 小时（含返程时间）。 */
     val netHourly: Double? = null,
     /** 报价低于用户设置的最低订单金额。 */
     val belowMinimumOrder: Boolean = false,

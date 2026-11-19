@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 /** PRD 3.1 简单规则模式（max(公里×0.8, 分钟×0.5)）下的测试。默认净时薪模式见 NetHourlyEvaluatorTest。 */
 class OfferEvaluatorTest {
-    private val simple = EvaluatorSettings(mode = RuleMode.PER_KM_PER_MINUTE)
+    private val simple = EvaluatorSettings(mode = RuleMode.PER_KM_PER_MINUTE, tipFreeShare = 1.0)
     private val ev = OfferEvaluator(simple)
     private fun near(expected: Double, actual: Double?, eps: Double = 0.005) =
         assertTrue(actual != null && kotlin.math.abs(expected - actual) < eps, "expected $expected but was $actual")
@@ -25,7 +25,7 @@ class OfferEvaluatorTest {
         near(23.94, r.distanceRequirement)
         near(21.0, r.timeRequirement)
         near(23.94, r.requiredPrice)
-        assertEquals(Verdict.MIN_WAGE, r.verdict)
+        assertEquals(Verdict.LOSS, r.verdict)
     }
 
     @Test fun caseB_walmartMultiStop_marginal() {
@@ -48,14 +48,13 @@ class OfferEvaluatorTest {
     @Test fun tier_boundaries() {
         assertEquals(Verdict.GREAT, ev.evaluate(offer(14.4, 10.0, 10.0)).verdict)   // ratio 1.8
         assertEquals(Verdict.GOOD, ev.evaluate(offer(14.39, 10.0, 10.0)).verdict)
-        assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(2.36, 10.0, 10.0)).verdict) // 正好回本（成本 2.36）
         assertEquals(Verdict.LOSS, ev.evaluate(offer(2.35, 10.0, 10.0)).verdict)     // 不够成本
     }
 
     @Test fun ratio_exactly_1_is_marginal_and_1_2_is_recommended() {
         assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(8.0, 10.0, 10.0)).verdict)   // req 8, ratio 1.0
         assertEquals(Verdict.GOOD, ev.evaluate(offer(9.6, 10.0, 10.0)).verdict) // ratio 1.2
-        assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(7.99, 10.0, 10.0)).verdict)
+        assertEquals(Verdict.LOSS, ev.evaluate(offer(7.99, 10.0, 10.0)).verdict)
         assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(9.59, 10.0, 10.0)).verdict)
     }
 
@@ -117,7 +116,7 @@ class OfferEvaluatorTest {
         // 案例 B 加 20km / 20min 返程：max(60.99*0.8, 83*0.5) = 48.79 → ratio 0.68
         val r = ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(20.0, 20.0))
         near(48.79, r.requiredPrice)
-        assertEquals(Verdict.MIN_WAGE, r.verdict)
+        assertEquals(Verdict.LOSS, r.verdict)
         // 返程 0 时与无返程一致
         assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(0.0, 0.0)).verdict)
     }
@@ -127,6 +126,6 @@ class OfferEvaluatorTest {
         val r = ev.evaluate(offer(9.0, 29.92, 42.0))
         near(7.06, r.vehicleCost, 0.01)
         near(1.94, r.netAfterVehicleCost, 0.01)
-        assertEquals(Verdict.MIN_WAGE, r.verdict) // 能回本但远低于目标 → 黄
+        assertEquals(Verdict.LOSS, r.verdict) // 不达标 → 红
     }
 }

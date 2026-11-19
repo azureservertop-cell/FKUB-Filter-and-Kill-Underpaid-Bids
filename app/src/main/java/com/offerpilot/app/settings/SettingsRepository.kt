@@ -24,6 +24,7 @@ class SettingsRepository(private val context: Context) {
         val minOrder = doublePreferencesKey("min_order_amount")
         val goodRatio = doublePreferencesKey("good_ratio")
         val greatRatio = doublePreferencesKey("great_ratio")
+        val tipFree = doublePreferencesKey("tip_free_share")
         val fuelL = doublePreferencesKey("fuel_l_per_100km")
         val fuelPrice = doublePreferencesKey("fuel_price")
         val maintenance = doublePreferencesKey("maintenance_per_100km")
@@ -57,6 +58,7 @@ class SettingsRepository(private val context: Context) {
                 minOrderAmount = this[K.minOrder] ?: e.minOrderAmount,
                 goodRatio = this[K.goodRatio] ?: e.goodRatio,
                 greatRatio = this[K.greatRatio] ?: e.greatRatio,
+                tipFreeShare = this[K.tipFree] ?: e.tipFreeShare,
                 fuelLitersPer100Km = this[K.fuelL] ?: e.fuelLitersPer100Km,
                 fuelPricePerLiter = this[K.fuelPrice] ?: e.fuelPricePerLiter,
                 maintenancePer100Km = this[K.maintenance] ?: e.maintenancePer100Km,
@@ -90,6 +92,7 @@ class SettingsRepository(private val context: Context) {
             p[K.minOrder] = e.minOrderAmount
             p[K.goodRatio] = e.goodRatio
             p[K.greatRatio] = e.greatRatio
+            p[K.tipFree] = e.tipFreeShare
             p[K.fuelL] = e.fuelLitersPer100Km
             p[K.fuelPrice] = e.fuelPricePerLiter
             p[K.maintenance] = e.maintenancePer100Km

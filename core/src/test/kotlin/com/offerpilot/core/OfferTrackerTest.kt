@@ -61,14 +61,14 @@ class OfferTrackerTest {
     @Test fun pipeline_messages_match_prd_examples() {
         val ev = OfferEvaluator()
         val o1 = offer(9.0, 29.92, 42.0); val r1 = ev.evaluate(o1)
-        assertEquals("保底 · $9 / 30km · 净$3/h", OfferMessages.overlay(o1, r1))
-        assertEquals("9块，30公里，只够最低工资。", OfferMessages.speech(o1, r1))
+        assertEquals("不达标 · $9 / 30km · 净$0/h", OfferMessages.overlay(o1, r1))
+        assertEquals("9块，30公里，不达标。", OfferMessages.speech(o1, r1))
         val o2 = offer(33.01, 40.99, 63.0)
-        assertEquals("保底 · $33 / 41km · 净$22/h", OfferMessages.overlay(o2, ev.evaluate(o2)))
+        assertEquals("不达标 · $33 / 41km · 净$16/h", OfferMessages.overlay(o2, ev.evaluate(o2)))
         val o3 = offer(7.0, 3.0, 10.0); val r3 = ev.evaluate(o3)
-        assertEquals("无脑接 · $7 / 3km · 净$38/h", OfferMessages.overlay(o3, r3))
+        assertEquals("比较赚 · $7 / 3km · 净$29/h", OfferMessages.overlay(o3, r3))
         assertEquals("无法判断 · $7", OfferMessages.overlay(offer(7.0, null, 10.0), ev.evaluate(offer(7.0, null, 10.0))))
-        assertEquals("7块，3公里，无脑接。", OfferMessages.speech(o3, r3))
+        assertEquals("7块，3公里，比较赚。", OfferMessages.speech(o3, r3))
         assertEquals("订单信息不完整。", OfferMessages.speech(offer(null, 3.0, 10.0), ev.evaluate(offer(null, 3.0, 10.0))))
     }
 

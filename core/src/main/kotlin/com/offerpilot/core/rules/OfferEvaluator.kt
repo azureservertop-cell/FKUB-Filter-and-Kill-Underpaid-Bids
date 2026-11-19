@@ -13,7 +13,9 @@ import kotlin.math.max
  *
  * 只接收 [DeliveryOffer]，不依赖 AccessibilityService 或任何 Android 类。
  *
- * 默认（NET_HOURLY）：最低报价 = 公里 × 每公里车辆成本 + 小时 × 目标净时薪
+ * 所有比较都用「不含小费价」= 显示价 × tipFreeShare（默认 0.8）。
+ * 默认（NET_HOURLY）：达标价 = 公里 × 每公里车辆成本 + 小时 × 目标净时薪
+ *   比值 = 不含小费价 / 达标价：< 1 红，1 ~ goodRatio 黄，goodRatio ~ greatRatio 绿，≥ greatRatio 蓝
  *   distanceRequirement = 车辆成本部分，timeRequirement = 净时薪部分，requiredPrice = 两者之和
  * 简单规则（PER_KM_PER_MINUTE）：最低报价 = max(公里 × minPerKm, 分钟 × minPerMinute)
  * 有返程时公里和分钟都加上返程部分。
@@ -72,13 +74,14 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
                 required = max(distanceReq, timeReq)
             }
         }
-        val ratio = payout / required
+        // Uber 显示价含预估小费；判断一律用不含小费的部分（默认显示价 × 80%）
+        val basePay = payout * settings.tipFreeShare
+        val ratio = basePay / required
         val belowMin = settings.minOrderAmount > 0 && payout < settings.minOrderAmount
 
-        val coversCost = vehicleCost == null || payout + 0.005 >= vehicleCost // 按分比较，避免浮点误差
         val verdict = when {
             belowMin -> Verdict.LOSS
-            !coversCost -> Verdict.LOSS
+            ratio + 1e-9 < 1.0 -> Verdict.LOSS          // 不含小费价不够「期望净时薪 + 车辆成本」：红
             ratio < settings.goodRatio -> Verdict.MIN_WAGE
             ratio < settings.greatRatio -> Verdict.GOOD
             else -> Verdict.GREAT
@@ -91,8 +94,9 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
             distanceRequirement = distanceReq,
             timeRequirement = timeReq,
             vehicleCost = vehicleCost,
-            netAfterVehicleCost = vehicleCost?.let { payout - it },
-            netHourly = vehicleCost?.let { (payout - it) / (totalMin / 60.0) },
+            netAfterVehicleCost = vehicleCost?.let { basePay - it },
+            netHourly = vehicleCost?.let { (basePay - it) / (totalMin / 60.0) },
+            basePay = basePay,
             belowMinimumOrder = belowMin,
         )
     }

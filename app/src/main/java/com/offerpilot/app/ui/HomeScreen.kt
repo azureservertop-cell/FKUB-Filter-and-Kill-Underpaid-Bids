@@ -80,7 +80,7 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             SwitchRow("震动", s.vibrationEnabled, { v -> upd { it.copy(vibrationEnabled = v) } })
             SwitchRow(
                 "屏幕边缘发光", s.edgeGlowEnabled, { v -> upd { it.copy(edgeGlowEnabled = v) } },
-                "蓝 = 无脑接，绿 = 比较赚，黄 = 只够最低工资，红 = 亏本",
+                "蓝 = 无脑接，绿 = 比较赚，黄 = 刚好达标，红 = 不达标",
             )
             SwitchRow("文字小条（金额 / 公里 / 净时薪）", s.overlayEnabled, { v -> upd { it.copy(overlayEnabled = v) } })
             SwitchRow(

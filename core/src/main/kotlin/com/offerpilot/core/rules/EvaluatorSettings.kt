@@ -26,7 +26,12 @@ data class EvaluatorSettings(
     val minPerMinute: Double = 0.50,
     /** 可接受的最低订单金额，0 表示不限制。 */
     val minOrderAmount: Double = 0.0,
-    /** 能回本时：ratio ≥ 此值为绿色（比较赚），否则黄色（最低工资水平）。 */
+    /**
+     * 显示价中不含小费的比例。Uber 显示的是"含预估小费"的价格，小费不一定兑现，
+     * 所以判断时只用 显示价 × 此比例。默认 0.8（用户实测）。设为 1 表示不扣。
+     */
+    val tipFreeShare: Double = 0.80,
+    /** ratio ≥ 1 为黄色（刚好达标）；≥ 此值为绿色（比较赚）。 */
     val goodRatio: Double = 1.2,
     /** ratio ≥ 此值为蓝色（无脑接）。 */
     val greatRatio: Double = 1.8,
@@ -57,4 +62,8 @@ data class EvaluatorSettings(
         RuleMode.NET_HOURLY -> km * vehicleCostPerKm + minutes * netPerMinute
         RuleMode.PER_KM_PER_MINUTE -> kotlin.math.max(km * minPerKm, minutes * minPerMinute)
     }
+
+    /** Uber 需要显示多少钱（含小费），不含小费部分才能达到 [ratio] 倍达标价。 */
+    fun displayedPriceFor(km: Double, minutes: Double, ratio: Double = 1.0): Double =
+        requiredFor(km, minutes) * ratio / tipFreeShare.coerceAtLeast(0.01)
 }
