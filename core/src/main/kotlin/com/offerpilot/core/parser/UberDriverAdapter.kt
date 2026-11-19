@@ -37,7 +37,13 @@ class UberDriverAdapter(
             lastDebug = AdapterDebug(note = "非目标应用 ${screen.packageName}")
             return AdapterResult.NoOffer
         }
-        val nodes = screen.nodes.filter { it.text.isNotBlank() }
+        var repairedPrice = false
+        val nodes = screen.nodes.filter { it.text.isNotBlank() }.map { n ->
+            if (screen.source != com.offerpilot.core.model.OfferSource.OCR) return@map n
+            val (t, changed) = OfferParser.repairOcrPriceLine(n.text)
+            if (changed) repairedPrice = true
+            if (changed) n.copy(text = t) else n
+        }
 
         val money = mutableListOf<Cand>()
         val dist = mutableListOf<Cand>()
@@ -72,6 +78,7 @@ class UberDriverAdapter(
         val issues = mutableListOf<ParseIssue>()
         var confidence = if (screen.source == com.offerpilot.core.model.OfferSource.OCR) 0.75f else 0.95f
         if (!hasAccept) confidence -= 0.10f
+        if (repairedPrice) confidence -= 0.05f
         if (acceptNodes.size > 1) issues += ParseIssue.MULTIPLE_OFFERS
 
         val (payout, payoutPenalty) = pick(money, config.payoutLabelKeywords, preferLargestText = true, centsTolerance = 0.005)

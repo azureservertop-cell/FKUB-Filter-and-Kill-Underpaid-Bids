@@ -186,14 +186,14 @@ class OfferMonitorService : AccessibilityService() {
      * 真机快照（Android 15）显示：Uber 在前台弹出订单时，整个界面层从无障碍树里消失，只剩地图。
      * 另外，Uber 在后台时会在其他应用上方显示自己的窗口（非 application 类型）。
      */
-    private fun hiddenOfferRegion(read: NodeReader.ScreenRead): Rect? {
+    private fun hiddenOfferRegion(read: NodeReader.ScreenRead): NodeReader.TargetWindow? {
         val dm = resources.displayMetrics
         val bigOverlay = read.windows.firstOrNull {
             !it.isApplication && it.bounds.width() >= dm.widthPixels / 2 && it.bounds.height() >= dm.heightPixels / 6
         }
-        if (bigOverlay != null) return bigOverlay.bounds
+        if (bigOverlay != null) return bigOverlay
         val app = read.windows.firstOrNull { it.isApplication } ?: return null
-        return if (read.screen.nodes.isEmpty()) app.bounds else null
+        return if (read.screen.nodes.isEmpty()) app else null
     }
 
     // ---------------- OCR ----------------
@@ -205,7 +205,7 @@ class OfferMonitorService : AccessibilityService() {
     private var lastOcrLinesAt = 0L
 
     /** worker 线程。最小间隔 [OCR_MIN_INTERVAL_MS]，同一时间只跑一个。 */
-    private fun requestOcr(region: Rect, pkg: String) {
+    private fun requestOcr(window: NodeReader.TargetWindow, pkg: String) {
         if (ocrInFlight) return
         val wait = OCR_MIN_INTERVAL_MS - (SystemClock.elapsedRealtime() - lastOcrAt)
         if (wait > 0) { scheduleRead(wait); return }
@@ -213,7 +213,7 @@ class OfferMonitorService : AccessibilityService() {
         lastOcrAt = SystemClock.elapsedRealtime()
         val gen = frameGeneration
         val started = SystemClock.elapsedRealtime()
-        ocr.recognize(region, pkg) { screen ->
+        ocr.recognize(window.bounds, window.id, pkg) { screen ->
             ocrInFlight = false
             val s = settings
             try {

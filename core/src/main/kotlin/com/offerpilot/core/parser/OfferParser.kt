@@ -99,6 +99,35 @@ object OfferParser {
     private fun isJoiner(between: String): Boolean =
         between.isBlank() || between.trim().lowercase() in setOf("and", "&", ",")
 
+    // ---------------- OCR 修正 ----------------
+
+    /** 单独一行的报价，如 "CA$6.78"、OCR 误读的 "CA$678"、"CAS6 78"。 */
+    private val OCR_PRICE_LINE = Regex("""^\s*(CA|C|CAD)?\s?[${'$'}S]\s?(\d{1,4})(?:[\s.,·•:'](\d{2}))?\s*$""", RegexOption.IGNORE_CASE)
+
+    /**
+     * 修正 OCR 对报价行的常见误读（真机：Uber 报价一律显示两位小数，如 "CA$5.05"）。
+     *  - 小数点丢失："CA$678" → "CA$6.78"（3–4 位整数，且整行只有这个金额）
+     *  - 小数点被识别成空格 / 逗号 / 中点："CA$6 78" → "CA$6.78"
+     *  - "$" 被识别成 "S"："CAS6.78" → "CA$6.78"（仅限带 CA 前缀的独立金额行）
+     * 返回 (修正后的文字, 是否做了修正)。不是独立金额行的文字原样返回。
+     */
+    fun repairOcrPriceLine(line: String): Pair<String, Boolean> {
+        val m = OCR_PRICE_LINE.matchEntire(line.trim()) ?: return line to false
+        val prefix = m.groupValues[1]
+        val symbol = line.trim().substring(m.groups[2]!!.range.first - 1).first { it == '$' || it == 'S' || it == 's' }
+        if (symbol != '$' && prefix.isEmpty()) return line to false // 单独的 "S12" 不当作金额
+        val whole = m.groupValues[2]
+        val cents = m.groupValues[3]
+        val fixed = when {
+            cents.isNotEmpty() -> "$whole.$cents"
+            whole.length >= 3 -> whole.dropLast(2) + "." + whole.takeLast(2)
+            else -> whole
+        }
+        val out = "CA$" + fixed
+        val original = line.trim()
+        return out to (out != original && !(original.endsWith(fixed) && symbol == '$' && cents.isEmpty() && whole.length < 3))
+    }
+
     fun parseMoney(text: String): Double? = findMoney(text).singleOrNull()?.value
     fun parseDistanceKm(text: String): Double? = findDistancesKm(text).singleOrNull()?.value
     fun parseDurationMinutes(text: String): Double? = findDurationsMinutes(text).singleOrNull()?.value

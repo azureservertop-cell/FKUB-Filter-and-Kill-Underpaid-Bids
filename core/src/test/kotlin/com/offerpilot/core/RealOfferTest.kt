@@ -50,3 +50,49 @@ class RealOfferTest {
         assertEquals(5.50, o.offer.estimatedPayout)
     }
 }
+
+/** 真机 OCR 误读修正。 */
+class OcrRepairTest {
+    private fun fix(s: String) = com.offerpilot.core.parser.OfferParser.repairOcrPriceLine(s).first
+
+    @Test fun missing_decimal_point() {
+        assertEquals("CA$6.78", fix("CA$678"))
+        assertEquals("CA$12.50", fix("CA$1250"))
+    }
+
+    @Test fun decimal_read_as_other_char() {
+        assertEquals("CA$6.78", fix("CA$6 78"))
+        assertEquals("CA$6.78", fix("CA$6,78"))
+        assertEquals("CA$6.78", fix("CAS6.78"))
+    }
+
+    @Test fun correct_lines_untouched_or_equivalent() {
+        assertEquals("CA$5.05", fix("CA$5.05"))
+        assertEquals(false, com.offerpilot.core.parser.OfferParser.repairOcrPriceLine("CA$5.05").second)
+        assertEquals("15 min (3.4 km) total", fix("15 min (3.4 km) total"))
+        assertEquals("including estimated tip", fix("including estimated tip"))
+        assertEquals("S12", fix("S12"))
+    }
+
+    @Test fun real_second_popup_with_own_overlay_text() {
+        // 真机 OCR（Uber 在桌面上方弹单，全屏截图）原样输出，含本应用悬浮条被识别出的 "F$5/ 3km A$17/h"
+        val lines = listOf(
+            "07:39 e", "N", "N", "A", "F$5/ 3km A$17/h", "CLARKE RD", "ARGYLE", "ARGYLE PARK", "Y Delivery Exclusive",
+            "CA$5.05", "including estimated tip", "() 15 min (3.4 km) total", "HeBlSu 100", "TRAFALGAR ST", "Accept",
+        )
+        val screen = ScreenText(UBER, lines.map { TextNode(it) }, 1_000L, OfferSource.OCR)
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen)).offer
+        assertEquals(5.05, o.estimatedPayout)
+        assertEquals(3.4, o.distanceKm)
+        assertEquals(15.0, o.durationMinutes)
+    }
+
+    @Test fun ocr_678_parsed_as_6_78() {
+        val screen = ScreenText(
+            UBER, listOf("Delivery", "CA$678", "including estimated tip", "12 min (2.1 km) total", "Accept").map { TextNode(it) },
+            1_000L, OfferSource.OCR,
+        )
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen)).offer
+        assertEquals(6.78, o.estimatedPayout)
+    }
+}

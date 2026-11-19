@@ -5,6 +5,7 @@ import android.accessibilityservice.AccessibilityService.ScreenshotResult
 import android.accessibilityservice.AccessibilityService.TakeScreenshotCallback
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.os.Build
 import android.util.Log
 import android.view.Display
 import com.google.mlkit.vision.common.InputImage
@@ -33,11 +34,18 @@ class ScreenOcr(
 ) {
     private val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
-    /** [onResult] 在 [executor] 上回调；失败时传 null。 */
-    fun recognize(region: Rect, packageName: String, onResult: (ScreenText?) -> Unit) {
+    /**
+     * [onResult] 在 [executor] 上回调；失败时传 null。
+     *
+     * Android 14+ 用 takeScreenshotOfWindow 只截 Uber 的窗口：不会截到本应用自己的悬浮提示
+     * （否则 "$5 / 3km" 这样的提示文字会被当成订单内容）以及其他应用的文字。
+     * 更早的版本截全屏后裁剪到 Uber 窗口区域。
+     */
+    fun recognize(region: Rect, windowId: Int, packageName: String, onResult: (ScreenText?) -> Unit) {
         val takenAt = System.currentTimeMillis()
         try {
-            service.takeScreenshot(Display.DEFAULT_DISPLAY, executor, object : TakeScreenshotCallback {
+            val windowOnly = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && windowId >= 0
+            val callback = object : TakeScreenshotCallback {
                 override fun onSuccess(result: ScreenshotResult) {
                     var full: Bitmap? = null
                     var crop: Bitmap? = null
@@ -47,7 +55,16 @@ class ScreenOcr(
                         hw?.recycle()
                         result.hardwareBuffer.close()
                         val src = full ?: return onResult(null)
-                        val r = Rect(region).apply { if (!intersect(0, 0, src.width, src.height)) set(0, 0, src.width, src.height) }
+                        // r：截图中要识别的区域；(ox, oy)：截图坐标 → 屏幕坐标的偏移
+                        val r: Rect
+                        val ox: Int
+                        val oy: Int
+                        if (windowOnly) {
+                            r = Rect(0, 0, src.width, src.height); ox = region.left; oy = region.top
+                        } else {
+                            r = Rect(region).apply { if (!intersect(0, 0, src.width, src.height)) set(0, 0, src.width, src.height) }
+                            ox = 0; oy = 0
+                        }
                         val c = if (r.width() == src.width && r.height() == src.height) src
                         else Bitmap.createBitmap(src, r.left, r.top, r.width(), r.height())
                         crop = c
@@ -57,7 +74,9 @@ class ScreenOcr(
                                     val b = line.boundingBox
                                     TextNode(
                                         text = line.text,
-                                        bounds = b?.let { Box(it.left + r.left, it.top + r.top, it.right + r.left, it.bottom + r.top) },
+                                        bounds = b?.let {
+                                            Box(it.left + r.left + ox, it.top + r.top + oy, it.right + r.left + ox, it.bottom + r.top + oy)
+                                        },
                                     )
                                 }
                                 recycle(full, crop)
@@ -79,7 +98,9 @@ class ScreenOcr(
                     Log.w(TAG, "screenshot failed: $errorCode")
                     onResult(null)
                 }
-            })
+            }
+            if (windowOnly) service.takeScreenshotOfWindow(windowId, executor, callback)
+            else service.takeScreenshot(Display.DEFAULT_DISPLAY, executor, callback)
         } catch (t: Throwable) {
             Log.w(TAG, "takeScreenshot threw", t)
             executor.execute { onResult(null) }

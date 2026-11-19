@@ -36,7 +36,7 @@ class NodeReader(private val service: AccessibilityService) {
     }
 
     /** 目标应用的一个窗口。 */
-    data class TargetWindow(val bounds: Rect, val isApplication: Boolean)
+    data class TargetWindow(val id: Int, val bounds: Rect, val isApplication: Boolean)
 
     /** 一帧读取结果：文字 + 窗口信息（用于判断弹窗是否被隐藏、OCR 裁剪区域）。 */
     data class ScreenRead(
@@ -55,7 +55,7 @@ class NodeReader(private val service: AccessibilityService) {
         val roots = targetRoots(targets)
         if (roots.isEmpty()) return null
         val windows = roots.mapNotNull { (w, _) ->
-            w?.let { val r = Rect(); it.getBoundsInScreen(r); TargetWindow(r, it.type == AccessibilityWindowInfo.TYPE_APPLICATION) }
+            w?.let { val r = Rect(); it.getBoundsInScreen(r); TargetWindow(it.id, r, it.type == AccessibilityWindowInfo.TYPE_APPLICATION) }
         }
         val nodes = ArrayList<TextNode>(128)
         var count = 0
