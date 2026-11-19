@@ -33,7 +33,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: OfferPilot-debug-apk
+          name: FKUB-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload test reports

@@ -1,5 +1,8 @@
 # FKUB · Filter & Kill Underpaid Bids
 
+[![Android CI](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml/badge.svg)](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml)
+[![Latest APK](https://img.shields.io/badge/download-FKUB--debug.apk-1f6feb)](https://github.com/azureservertop-cell/Offerpilot/releases/download/latest/FKUB-debug.apk)
+
 **English** · [中文](README.zh-CN.md)
 
 > An Android helper for Uber Eats couriers: it reads each delivery offer, checks it against your own numbers and tells you at a glance whether it's worth taking. (Internal codename OfferPilot; the package id stays `com.offerpilot.app` so updates install over older builds.)
@@ -19,7 +22,21 @@ On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https
    - On Android 13+ a sideloaded app's switch may be greyed out: Settings → Apps → FKUB → ⋮ (top right) → **Allow restricted settings**, then turn it on again.
 3. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI, overlay and speech to Chinese.
 
-## How offers are read
+## How it works
+
+```mermaid
+flowchart LR
+    A[Uber Driver<br/>offer popup] -->|window events| B[OfferMonitorService]
+    B -->|text hidden from<br/>accessibility tree| C[Screenshot of Uber's window<br/>+ on-device ML Kit OCR]
+    B -->|text readable| D[Node text]
+    C --> E[UberDriverAdapter<br/>parse price · km · min]
+    D --> E
+    E --> F[OfferTracker<br/>dedupe · settle · withdraw]
+    F --> G[OfferEvaluator<br/>your costs + target $/h]
+    G --> H[Edge glow · pill · sound<br/>speech · vibration]
+```
+
+### Reading offers
 
 Phase 0 on a real device (Android 15) showed that **while an offer popup is up, Uber Driver hides its whole UI from the accessibility tree**. So FKUB:
 
@@ -42,12 +59,12 @@ ratio             = tip-free pay / required pay
 
 🔴 red    below target : ratio < 1 (spoken as "losing money" if it doesn't even cover vehicle cost)
 🟡 yellow meets target : 1 ≤ ratio < 1.2, i.e. $18/h net even with no tip
-🟢 green  good pay     : 1.2 ≤ ratio < 1.8
-🔵 blue   must take    : ratio ≥ 1.8
+🟢 green  good pay     : 1.2 ≤ ratio < 1.5
+🔵 blue   must take    : ratio ≥ 1.5
 missing / ambiguous / implausible / low confidence / stale → unknown (no glow, grey pill)
 ```
 
-85%, 1.2 and 1.8 are all adjustable. The Rules tab also lists, for your car, the minimum price Uber has to show for each tier at different times and distances.
+85%, 1.2 and 1.5 are all adjustable. The Rules tab also lists, for your car, the minimum price Uber has to show for each tier at different times and distances.
 
 Defaults (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $18/h → $0.30/min; 85% tip-free):
 
@@ -55,7 +72,7 @@ Defaults (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $18/h → 
 |---|---|---|---|---|---|---|
 | A | $9 · 29.92 km · 42 min | $7.65 | $19.66 | 0.39 | $0.84/h | 🔴 below target |
 | B | $33.01 · 40.99 km · 63 min | $28.06 | $28.57 | 0.98 | $17.51/h | 🔴 below target (short by $0.60) |
-| C | $7 · 3 km · 10 min | $5.95 | $3.71 | 1.60 | $31.45/h | 🟢 good pay |
+| C | $7 · 3 km · 10 min | $5.95 | $3.71 | 1.60 | $31.45/h | 🔵 must take |
 | Real | $5.50 · 1.3 km · 15 min | $4.68 | $4.81 | 0.97 | $17.47/h | 🔴 below target (short by $0.16) |
 
 Under **Advanced** you can switch to the simple rule from the original spec, `max(km × $0.80, min × $0.50)` (also applied to the tip-free pay).
@@ -132,6 +149,13 @@ Integration checks that need a real device are listed in [docs/PHASE0.md](docs/P
 ## Privacy
 
 No network permission. Screenshots are processed in memory and never saved by default. Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses, names and order numbers are not read.
+
+## Status and limitations
+
+- Verified on one phone (nubia, Android 15) in London, Ontario, with Canadian-dollar offers in English. Other Uber layouts (multi-stop, other languages, other regions) haven't been seen yet; the adapter answers "unknown" rather than guessing.
+- OCR needs Android 14+ for window-only screenshots; Android 11–13 fall back to a full screenshot cropped to Uber's window.
+- Fuel price is entered by hand.
+- Debug builds only, signed with the debug key.
 
 ## Credits
 

@@ -24,7 +24,7 @@ class SettingsRepository(private val context: Context) {
         val perMin = doublePreferencesKey("min_per_minute")
         val minOrder = doublePreferencesKey("min_order_amount")
         val goodRatio = doublePreferencesKey("good_ratio")
-        val greatRatio = doublePreferencesKey("great_ratio")
+        val greatRatio = doublePreferencesKey("great_ratio_v2") // v2: default changed to 1.5; ignore the 1.8 stored by older builds
         val tipFree = doublePreferencesKey("tip_free_share_v2") // v2: default changed to 85%; ignore the 80% stored by older builds
         val fuelL = doublePreferencesKey("fuel_l_per_100km")
         val fuelPrice = doublePreferencesKey("fuel_price")

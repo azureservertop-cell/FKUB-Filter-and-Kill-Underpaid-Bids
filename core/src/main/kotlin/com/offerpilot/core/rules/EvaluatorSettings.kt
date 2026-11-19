@@ -34,7 +34,7 @@ data class EvaluatorSettings(
     /** ratio ≥ 1 is yellow (meets target); ≥ this value is green (pays well). */
     val goodRatio: Double = 1.2,
     /** ratio ≥ this value is blue (must-take). */
-    val greatRatio: Double = 1.8,
+    val greatRatio: Double = 1.5,
     val fuelLitersPer100Km: Double = 10.0,
     val fuelPricePerLiter: Double = 1.36,
     /** Maintenance / wear cost per 100 km (servicing, tires, depreciation, ...). */

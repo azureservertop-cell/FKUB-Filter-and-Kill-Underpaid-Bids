@@ -1,5 +1,8 @@
 # FKUB · Filter & Kill Underpaid Bids
 
+[![Android CI](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml/badge.svg)](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml)
+[![Latest APK](https://img.shields.io/badge/download-FKUB--debug.apk-1f6feb)](https://github.com/azureservertop-cell/Offerpilot/releases/download/latest/FKUB-debug.apk)
+
 [English](README.md) · **中文**
 
 > Uber Eats 送餐订单筛选助手：读取每一单的报价，按你自己的标准算一遍，一眼看出值不值得接。（内部代号 OfferPilot，包名 `com.offerpilot.app` 保持不变，方便覆盖安装。）
@@ -42,12 +45,12 @@ Uber 在前台、或在地图 / 桌面等其他应用上方弹单时都能识别
 
 🔴 红 不达标：比值 < 1（连车辆成本都不够时语音说“亏本”）
 🟡 黄 刚好达标：1 ≤ 比值 < 1.2，即不含小费也能净赚 $18/h
-🟢 绿 比较赚：1.2 ≤ 比值 < 1.8
-🔵 蓝 无脑接：比值 ≥ 1.8
+🟢 绿 比较赚：1.2 ≤ 比值 < 1.5
+🔵 蓝 无脑接：比值 ≥ 1.5
 数据缺失 / 歧义 / 不合理 / 置信度低 / 过期 → 无法判断（不发光，灰色提示条）
 ```
 
-85%、1.2、1.8 都可以手动调。「规则」页会按你的车自动列出不同时长 / 距离下，Uber 至少要显示多少钱才进入每一档。
+85%、1.2、1.5 都可以手动调。「规则」页会按你的车自动列出不同时长 / 距离下，Uber 至少要显示多少钱才进入每一档。
 
 默认值（油耗 10 L/100km、油价 $1.36/L、维护 $10/100km → $0.236/km；$18/h → $0.30/分钟；不含小费 85%）：
 
@@ -55,7 +58,7 @@ Uber 在前台、或在地图 / 桌面等其他应用上方弹单时都能识别
 |---|---|---|---|---|---|---|
 | A | $9 · 29.92km · 42min | $7.65 | $19.66 | 0.39 | $0.84/h | 🔴 不达标 |
 | B | $33.01 · 40.99km · 63min | $28.06 | $28.57 | 0.98 | $17.51/h | 🔴 不达标（差 $0.60） |
-| C | $7 · 3km · 10min | $5.95 | $3.71 | 1.60 | $31.45/h | 🟢 比较赚 |
+| C | $7 · 3km · 10min | $5.95 | $3.71 | 1.60 | $31.45/h | 🔵 无脑接 |
 | 真实 | $5.50 · 1.3km · 15min | $4.68 | $4.81 | 0.97 | $17.47/h | 🔴 不达标（差 $0.16） |
 
 「规则」页的「高级」里可以切回最初需求里的简单规则 `max(公里 × $0.80, 分钟 × $0.50)`（同样先扣小费）。
@@ -87,6 +90,13 @@ Uber 在前台、或在地图 / 桌面等其他应用上方弹单时都能识别
 ## 隐私
 
 没有网络权限。截图只在内存中处理，默认不保存。调试快照只在你主动开始抓取（或开启自动快照）时保存在手机的 `Android/data/com.offerpilot.app/files/snapshots/`。不读取地址、姓名、订单号。
+
+## 现状与限制
+
+- 只在一台手机（nubia，Android 15，安大略省伦敦市）上验证过，报价是加元、英文界面。多点配送、其他语言或地区的 Uber 界面还没见过，适配器遇到不认识的情况会输出“无法判断”，不会乱猜。
+- 只截 Uber 窗口需要 Android 14+；Android 11–13 截全屏后裁剪到 Uber 窗口。
+- 油价目前需要手动填写。
+- 目前只有用 debug 签名的调试版。
 
 ## 致谢
 

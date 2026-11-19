@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "OfferPilot"
+rootProject.name = "FKUB"
 include(":core", ":app")
