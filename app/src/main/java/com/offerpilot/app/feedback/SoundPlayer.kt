@@ -12,10 +12,10 @@ import com.offerpilot.core.model.Verdict
 import java.io.File
 
 /**
- * 档位音效。内置音效全部为程序合成（见 tools/make_sounds.py）：
- *  - 🔵 无脑接：气笛"嘟嘟嘟"   - 🟢 比较赚：金币
- *  - 🟡 刚好达标：默认无音效    - 🔴 不达标：拉稀
- * 每一档都可以换成用户自己的音频文件（复制到应用私有目录）。
+ * Per-tier sound effects. Built-in clips come from free asset packs (see SOUND_CREDITS.md):
+ *  - 🔵 must-take: meme air horn      - 🟢 good: coin
+ *  - 🟡 meets target: silent by default - 🔴 below target: wet fart
+ * Every tier can be replaced with the user's own audio file (copied into app-private storage).
  */
 class SoundPlayer(private val context: Context) {
     private val pool = SoundPool.Builder()
