@@ -26,7 +26,7 @@ class SnapshotStore(private val service: AccessibilityService) {
 
     val dir: File get() = File(service.getExternalFilesDir(null), "snapshots").apply { mkdirs() }
 
-    fun capture(targets: Set<String>, reason: String, adapterDebug: AdapterDebug?): File? {
+    fun capture(targets: Set<String>, reason: String, adapterDebug: AdapterDebug?, into: File = dir): File? {
         val json = JSONObject()
         json.put("app", "OfferPilot")
         json.put("format", 1)
@@ -65,7 +65,7 @@ class SnapshotStore(private val service: AccessibilityService) {
         json.put("windows", windows)
         json.put("hasTargetWindow", hasTarget)
         val name = "snapshot-" + SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date())
-        val file = File(dir, "$name.json")
+        val file = File(into.apply { mkdirs() }, "$name.json")
         file.writeText(json.toString(2))
         return file
     }
@@ -77,7 +77,25 @@ class SnapshotStore(private val service: AccessibilityService) {
         return png
     }
 
+    fun newSessionDir(): File =
+        File(dir, "session-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())).apply { mkdirs() }
+
     fun list(): List<File> = dir.listFiles()?.filter { it.extension == "json" }?.sortedByDescending { it.lastModified() }.orEmpty()
+
+    companion object {
+        /** 把一个会话目录打包成同名 zip（放在 snapshots/ 下），便于一次分享。 */
+        fun zipSession(sessionDir: File): File {
+            val zip = File(sessionDir.parentFile, sessionDir.name + ".zip")
+            java.util.zip.ZipOutputStream(zip.outputStream().buffered()).use { out ->
+                sessionDir.listFiles()?.sortedBy { it.name }?.forEach { f ->
+                    out.putNextEntry(java.util.zip.ZipEntry(sessionDir.name + "/" + f.name))
+                    f.inputStream().use { it.copyTo(out) }
+                    out.closeEntry()
+                }
+            }
+            return zip
+        }
+    }
 
     private fun dump(n: AccessibilityNodeInfo, depth: Int, budget: () -> Boolean): JSONObject {
         val o = JSONObject()

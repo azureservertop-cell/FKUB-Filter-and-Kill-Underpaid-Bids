@@ -2,11 +2,14 @@ package com.offerpilot.app.ui
 
 import android.content.Intent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -27,6 +30,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.offerpilot.app.accessibility.MonitorState
 import com.offerpilot.app.accessibility.OfferMonitorService
+import com.offerpilot.app.debug.SnapshotStore
 import com.offerpilot.app.settings.AppSettings
 import com.offerpilot.app.settings.SettingsRepository
 import kotlinx.coroutines.delay
@@ -45,21 +49,16 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     val files = remember(refresh, status.lastSnapshotPath) {
         dir.listFiles()?.filter { it.extension == "json" }?.sortedByDescending { it.lastModified() }.orEmpty()
     }
+    val sessions = remember(refresh, status.lastSnapshotPath, status.recording?.sessionName) {
+        dir.listFiles()?.filter { it.isDirectory && it.name.startsWith("session-") }?.sortedByDescending { it.name }.orEmpty()
+    }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(status.snapshotCountdownUntil) {
-        while (status.snapshotCountdownUntil != null) { now = System.currentTimeMillis(); delay(250) }
+    LaunchedEffect(status.snapshotCountdownUntil, status.recording != null) {
+        while (status.snapshotCountdownUntil != null || status.recording != null) { now = System.currentTimeMillis(); delay(500) }
     }
     fun upd(f: (AppSettings) -> AppSettings) = scope.launch { repo.update(f) }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        if (!s.debugMode) {
-            Section("调试模式未开启") {
-                Text("快照只在你主动操作时保存，只包含目标应用窗口的控件文字和位置，保存在本机，不会上传。")
-                Button(onClick = { upd { it.copy(debugMode = true) } }) { Text("开启调试模式") }
-            }
-            return@Column
-        }
-
         Section("目标应用") {
             androidx.compose.material3.OutlinedTextField(
                 targetsText, { targetsText = it },
@@ -73,17 +72,38 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             Text("最近适配器状态：${status.lastAdapterNote ?: "—"}", style = MaterialTheme.typography.bodySmall)
         }
 
-        Section("抓取控件快照（Phase 0 可行性验证）") {
+        Section("持续抓取（Phase 0 可行性验证）") {
+            val rec = status.recording
             Text(
-                "三种方式任选：\n" +
-                    "1. 点下面的「10 秒后抓取」，然后切到 Uber 订单弹窗；\n" +
-                    "2. 调试模式下导航栏/无障碍快捷菜单会出现无障碍按钮，订单弹出时点一下；\n" +
-                    "3. 打开「自动快照」，识别到疑似订单时自动保存（最多 30 份）。\n" +
-                    "请在停车时操作。",
+                "点「开始抓取」后切到 Uber Driver 正常跑单，Uber 画面上的文字每变化一次就自动存一份快照（最快每秒一份，地图移动不会重复保存）。" +
+                    "回到这里点「结束抓取」，会自动打包成一个 zip，点「分享」发给我即可。抓取期间屏幕左上角有红色小标记。",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (rec == null) {
+                Button(
+                    onClick = { OfferMonitorService.instance?.startRecording() },
+                    enabled = status.serviceConnected,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (status.serviceConnected) "开始抓取" else "需先开启无障碍服务") }
+            } else {
+                val mins = ((now - rec.startedAt) / 60_000).coerceAtLeast(0)
+                Text("抓取中：已保存 ${rec.count} 份（上限 ${rec.maxCount}），已进行 $mins 分钟", style = MaterialTheme.typography.bodyMedium)
+                Button(
+                    onClick = { OfferMonitorService.instance?.stopRecording() },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("结束抓取") }
+            }
+            SwitchRow("快照附带截图", s.snapshotScreenshot, { v -> upd { it.copy(snapshotScreenshot = v) } }, "默认关闭。截图能帮助对照，但会占空间，也可能包含顾客地址")
+        }
+
+        Section("其他抓取方式") {
+            Text(
+                "• 10 秒后抓取一份；\n• 开启调试模式后，点系统的无障碍按钮抓取一份；\n• 开启调试模式 + 自动快照：识别到疑似订单时自动保存（最多 30 份）。\n请在停车时操作。",
                 style = MaterialTheme.typography.bodySmall,
             )
             val until = status.snapshotCountdownUntil
-            Button(
+            OutlinedButton(
                 onClick = { OfferMonitorService.instance?.scheduleSnapshot(10_000) },
                 enabled = status.serviceConnected && until == null,
             ) {
@@ -96,15 +116,31 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                 )
             }
             SwitchRow("自动快照", s.autoSnapshot, { v -> upd { it.copy(autoSnapshot = v) } })
-            SwitchRow("快照附带截图", s.snapshotScreenshot, { v -> upd { it.copy(snapshotScreenshot = v) } }, "默认关闭。截图可能包含顾客地址，分享前请检查")
         }
 
-        Section("已保存的快照（${files.size}）") {
+        Section("抓取记录") {
             Text(dir.absolutePath, style = MaterialTheme.typography.bodySmall)
+            sessions.forEach { d ->
+                val n = d.listFiles()?.count { it.extension == "json" } ?: 0
+                val recordingThis = status.recording?.sessionName == d.name
+                Column {
+                    Text("${d.name}（$n 份${if (recordingThis) "，抓取中" else ""}）", style = MaterialTheme.typography.bodyMedium)
+                    if (!recordingThis) {
+                        Row {
+                            TextButton(onClick = {
+                                val zip = File(dir, d.name + ".zip").takeIf { it.exists() } ?: SnapshotStore.zipSession(d)
+                                share(ctx, zip)
+                            }) { Text("分享 zip") }
+                            TextButton(onClick = { d.listFiles()?.filter { it.extension == "json" }?.maxByOrNull { it.name }?.let { preview = summarize(it) } }) { Text("看最后一份") }
+                            TextButton(onClick = { d.deleteRecursively(); File(dir, d.name + ".zip").delete(); refresh++ }) { Text("删除") }
+                        }
+                    }
+                }
+            }
             files.take(30).forEach { f ->
                 Column {
                     Text(f.name, style = MaterialTheme.typography.bodyMedium)
-                    androidx.compose.foundation.layout.Row {
+                    Row {
                         TextButton(onClick = { preview = summarize(f) }) { Text("查看文字") }
                         TextButton(onClick = { share(ctx, f) }) { Text("分享") }
                         TextButton(onClick = {
@@ -113,8 +149,9 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                     }
                 }
             }
-            if (files.isNotEmpty()) {
-                OutlinedButton(onClick = { dir.listFiles()?.forEach { it.delete() }; refresh++; preview = null }) { Text("全部删除") }
+            if (sessions.isEmpty() && files.isEmpty()) Text("暂无记录")
+            if ((sessions.isNotEmpty() || files.isNotEmpty()) && status.recording == null) {
+                OutlinedButton(onClick = { dir.listFiles()?.forEach { it.deleteRecursively() }; refresh++; preview = null }) { Text("全部删除") }
             }
         }
 
@@ -158,7 +195,7 @@ private fun walk(n: org.json.JSONObject, sb: StringBuilder) {
 private fun share(ctx: android.content.Context, f: File) {
     val uris = arrayListOf(FileProvider.getUriForFile(ctx, ctx.packageName + ".files", f))
     val png = File(f.parentFile, f.nameWithoutExtension + ".png")
-    if (png.exists()) uris += FileProvider.getUriForFile(ctx, ctx.packageName + ".files", png)
+    if (f.extension == "json" && png.exists()) uris += FileProvider.getUriForFile(ctx, ctx.packageName + ".files", png)
     val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
         type = "*/*"
         putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)

@@ -47,6 +47,30 @@ class OverlayController(private val service: AccessibilityService) {
         }
     }
 
+    private var badge: TextView? = null
+
+    /** 持续抓取时左上角的小标记（不可触摸）。 */
+    fun showBadge(text: String) {
+        main.post {
+            val tv = badge ?: createView().also { v ->
+                v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                v.setTextColor(Color.WHITE)
+                (v.background as GradientDrawable).setColor(Color.parseColor("#CCC62828"))
+                val p = params(OverlayPosition.TOP).apply { gravity = Gravity.TOP or Gravity.START; x = 16 }
+                runCatching { wm.addView(v, p) }.onFailure { return@post }
+                badge = v
+            }
+            tv.text = text
+        }
+    }
+
+    fun hideBadge() {
+        main.post {
+            badge?.let { runCatching { wm.removeView(it) } }
+            badge = null
+        }
+    }
+
     private fun createView(): TextView {
         val dp = { v: Float -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, service.resources.displayMetrics) }
         return TextView(service).apply {

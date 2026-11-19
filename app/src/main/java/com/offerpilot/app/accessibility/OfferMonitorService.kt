@@ -51,6 +51,9 @@ class OfferMonitorService : AccessibilityService() {
         private const val TAG = "OfferMonitor"
         private const val READ_INTERVAL_MS = 150L
         private const val MAX_AUTO_SNAPSHOTS = 30
+        /** 持续抓取：两份快照之间的最短间隔，以及每个会话的上限。 */
+        private const val RECORD_MIN_INTERVAL_MS = 1000L
+        const val RECORD_MAX_COUNT = 1000
 
         private var instanceRef = WeakReference<OfferMonitorService>(null)
         val instance: OfferMonitorService? get() = instanceRef.get()
@@ -75,6 +78,13 @@ class OfferMonitorService : AccessibilityService() {
     private var readScheduled = false
     private var lastAutoSnapshotKey: String? = null
     private var buttonCallback: AccessibilityButtonController.AccessibilityButtonCallback? = null
+
+    // 持续抓取会话（仅 worker 线程访问）
+    private var recordDir: java.io.File? = null
+    private var recordCount = 0
+    private var recordLastHash = 0
+    private var recordLastAt = 0L
+    private var recordStartedAt = 0L
 
     private val readRunnable = Runnable { readScheduled = false; processFrame() }
 
@@ -108,7 +118,7 @@ class OfferMonitorService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || !settings.monitoringEnabled) return
+        if (event == null || !(settings.monitoringEnabled || recording)) return
         if (!::workHandler.isInitialized) return
         // 非目标应用的事件只用于"用户离开 Uber"的判断：不读取其内容。
         val relevant = when (event.eventType) {
@@ -132,12 +142,14 @@ class OfferMonitorService : AccessibilityService() {
     /** worker 线程。 */
     private fun processFrame() {
         val s = settings
-        if (!s.monitoringEnabled) return
+        if (!s.monitoringEnabled && recordDir == null) return
         val started = SystemClock.elapsedRealtime()
         val now = System.currentTimeMillis()
         try {
             val screen = reader.readScreen(s.targetPackages, now)
             MonitorState.update { it.copy(targetInForeground = screen != null) }
+            if (recordDir != null && screen != null) recordFrame(screen, now)
+            if (!s.monitoringEnabled) return
             val output = if (screen == null) {
                 pipeline.tracker.onFrame(com.offerpilot.core.parser.AdapterResult.NoOffer, now)
                     .let { if (it is com.offerpilot.core.tracking.TrackerEvent.OfferGone) PipelineOutput.Clear else PipelineOutput.None }
@@ -202,6 +214,65 @@ class OfferMonitorService : AccessibilityService() {
         if (snapshots.list().size >= MAX_AUTO_SNAPSHOTS) return
         lastAutoSnapshotKey = key
         takeSnapshotNow("auto:${out.result.verdict}")
+    }
+
+    // ---------------- 持续抓取 ----------------
+
+    @Volatile private var recording = false
+
+    /** UI 调用：开始持续抓取。目标应用画面文字每变化一次保存一份快照（至少间隔 1 秒）。 */
+    fun startRecording() {
+        workHandler.post {
+            if (recordDir != null) return@post
+            val dir = snapshots.newSessionDir()
+            recordDir = dir; recordCount = 0; recordLastHash = 0; recordLastAt = 0L
+            recordStartedAt = System.currentTimeMillis()
+            recording = true
+            publishRecording()
+            scheduleRead(0)
+        }
+    }
+
+    /** UI 调用：结束持续抓取并打包成 zip。 */
+    fun stopRecording() {
+        workHandler.post {
+            val dir = recordDir ?: return@post
+            recordDir = null
+            recording = false
+            overlay.hideBadge()
+            val zip = runCatching { if (recordCount > 0) SnapshotStore.zipSession(dir) else null }
+                .onFailure { Log.w(TAG, "zip failed", it) }.getOrNull()
+            if (recordCount == 0) dir.deleteRecursively()
+            MonitorState.update { it.copy(recording = null, lastSnapshotPath = zip?.absolutePath ?: it.lastSnapshotPath) }
+        }
+    }
+
+    /** worker 线程：画面文字有变化才保存，避免地图动画导致的重复。 */
+    private fun recordFrame(screen: com.offerpilot.core.model.ScreenText, now: Long) {
+        val dir = recordDir ?: return
+        val hash = screen.nodes.fold(17) { h, n -> 31 * h + n.text.hashCode() + 7 * (n.bounds?.hashCode() ?: 0) }
+        if (hash == recordLastHash) return
+        if (now - recordLastAt < RECORD_MIN_INTERVAL_MS) {
+            // 稍后再读一次，保证变化后的最终画面也能被保存
+            scheduleRead(RECORD_MIN_INTERVAL_MS - (now - recordLastAt))
+            return
+        }
+        val file = runCatching { snapshots.capture(settings.targetPackages, "record", adapter.lastDebug, into = dir) }
+            .onFailure { Log.w(TAG, "record failed", it) }.getOrNull() ?: return
+        if (settings.snapshotScreenshot) captureScreenshot(file)
+        recordLastHash = hash
+        recordLastAt = now
+        recordCount++
+        publishRecording()
+        if (recordCount >= RECORD_MAX_COUNT) stopRecording()
+    }
+
+    private fun publishRecording() {
+        val dir = recordDir ?: return
+        MonitorState.update {
+            it.copy(recording = RecordingStatus(dir.name, recordStartedAt, recordCount, RECORD_MAX_COUNT))
+        }
+        overlay.showBadge("● 抓取中 $recordCount")
     }
 
     /** UI 调用：延时 [delayMs] 后抓取当前屏幕（留时间切到 Uber）。 */
@@ -272,6 +343,8 @@ class OfferMonitorService : AccessibilityService() {
     override fun onDestroy() {
         // 权限被撤销或服务被关闭：撤下所有提示并安全退出
         clearOutputs()
+        if (::overlay.isInitialized) overlay.hideBadge()
+        MonitorState.update { it.copy(recording = null) }
         if (::speaker.isInitialized) speaker.shutdown()
         if (::worker.isInitialized) worker.quitSafely()
         scope.cancel()
