@@ -35,6 +35,22 @@ class NodeReader(private val service: AccessibilityService) {
         return out
     }
 
+    /** 屏幕上读不到 root 的大窗口（不含本应用的无障碍悬浮层和输入法）。 */
+    private fun opaqueWindows(): List<TargetWindow> {
+        val dm = service.resources.displayMetrics
+        return runCatching { service.windows }.getOrNull().orEmpty().mapNotNull { w ->
+            if (w.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY ||
+                w.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD ||
+                w.type == AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER
+            ) return@mapNotNull null
+            val root = runCatching { w.root }.getOrNull()
+            if (root?.packageName != null) return@mapNotNull null
+            val r = Rect(); w.getBoundsInScreen(r)
+            if (r.width() < dm.widthPixels / 2 || r.height() < dm.heightPixels / 4) return@mapNotNull null
+            TargetWindow(w.id, r, w.type == AccessibilityWindowInfo.TYPE_APPLICATION)
+        }
+    }
+
     /** 目标应用的一个窗口。 */
     data class TargetWindow(val id: Int, val bounds: Rect, val isApplication: Boolean)
 
@@ -43,10 +59,15 @@ class NodeReader(private val service: AccessibilityService) {
         val screen: ScreenText,
         val windows: List<TargetWindow>,
         val totalNodes: Int,
+        /**
+         * 读不到内容的大窗口（root 为 null，不知道属于哪个应用）。真机：Uber 在后台时，
+         * 订单卡片以这种窗口弹在地图 / 桌面等其他应用上方。
+         */
+        val opaqueWindows: List<TargetWindow> = emptyList(),
     ) {
         /** 结构签名：文字没变但窗口/节点结构变了也能察觉（持续抓取用）。 */
         val signature: Int
-            get() = screen.nodes.fold(windows.hashCode() * 31 + totalNodes) { h, n ->
+            get() = screen.nodes.fold((windows.hashCode() * 31 + opaqueWindows.hashCode()) * 31 + totalNodes) { h, n ->
                 31 * h + n.text.hashCode() + 7 * (n.bounds?.hashCode() ?: 0)
             }
     }
@@ -79,6 +100,6 @@ class NodeReader(private val service: AccessibilityService) {
         }
         for ((_, root) in roots) walk(root, 0)
         val pkg = roots.first().second.packageName?.toString() ?: return null
-        return ScreenRead(ScreenText(pkg, nodes, now, OfferSource.ACCESSIBILITY), windows, count)
+        return ScreenRead(ScreenText(pkg, nodes, now, OfferSource.ACCESSIBILITY), windows, count, opaqueWindows())
     }
 }

@@ -58,6 +58,7 @@ class OfferMonitorService : AccessibilityService() {
         private const val RECORD_MIN_INTERVAL_MS = 1000L
         /** 两次 OCR 截图之间的最小间隔（系统对 takeScreenshot 也有频率限制）。 */
         private const val OCR_MIN_INTERVAL_MS = 800L
+        private const val OPAQUE_MAX_MISSES = 3
         const val RECORD_MAX_COUNT = 1000
 
         private var instanceRef = WeakReference<OfferMonitorService>(null)
@@ -192,9 +193,15 @@ class OfferMonitorService : AccessibilityService() {
             !it.isApplication && it.bounds.width() >= dm.widthPixels / 2 && it.bounds.height() >= dm.heightPixels / 6
         }
         if (bigOverlay != null) return bigOverlay
-        val app = read.windows.firstOrNull { it.isApplication } ?: return null
-        return if (read.screen.nodes.isEmpty()) app else null
+        val app = read.windows.firstOrNull { it.isApplication }
+        if (app != null && read.screen.nodes.isEmpty()) return app
+        // Uber 在线（有 Uber 窗口，如悬浮气泡）时，读不到内容的大窗口很可能就是弹在其他应用上的订单卡片。
+        // 同一个窗口连续几次识别不到订单就不再截图，避免对其他应用的悬浮窗反复 OCR。
+        return read.opaqueWindows.firstOrNull { (opaqueMisses[it.id] ?: 0) < OPAQUE_MAX_MISSES }
     }
+
+    /** 读不到内容的窗口 id → 连续 OCR 未识别到订单的次数。 */
+    private val opaqueMisses = HashMap<Int, Int>()
 
     // ---------------- OCR ----------------
 
@@ -217,6 +224,11 @@ class OfferMonitorService : AccessibilityService() {
             ocrInFlight = false
             val s = settings
             try {
+                if (screen != null) {
+                    val found = adapter.extract(screen) is AdapterResult.Offer
+                    if (found) opaqueMisses.remove(window.id) else opaqueMisses[window.id] = (opaqueMisses[window.id] ?: 0) + 1
+                    if (opaqueMisses.size > 50) opaqueMisses.clear()
+                }
                 // 识别期间弹窗已消失（出现过正常节点帧）→ 丢弃，避免输出过期结论
                 if (screen != null && gen == frameGeneration && s.monitoringEnabled) {
                     lastOcrLines = screen.nodes.map { it.text }

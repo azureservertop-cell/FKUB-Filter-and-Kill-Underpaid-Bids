@@ -96,3 +96,28 @@ class OcrRepairTest {
         assertEquals(6.78, o.estimatedPayout)
     }
 }
+
+/** 真机：Uber 在后台，订单卡片弹在 Google 地图上方；整数价格 "CA$6"。 */
+class IntegerPriceTest {
+    @Test fun integer_price_not_mangled() {
+        val p = com.offerpilot.core.parser.OfferParser
+        assertEquals("CA$6", p.repairOcrPriceLine("CA$6").first)
+        assertEquals(false, p.repairOcrPriceLine("CA$6").second)
+        assertEquals("CA$12", p.repairOcrPriceLine("CA$12").first)
+        assertEquals(6.0, p.parseMoney("CA$6"))
+    }
+
+    @Test fun real_offer_over_maps() {
+        val lines = listOf(
+            "Ask Maps", "Restaurants", "Shopping", "Mr. Burrito", "Home", "Whitney St", "Giant Creative Inc",
+            "Delivery", "Exclusive", "CA$6", "including estimated tip", "22 min (8.0 km) total", "Accept",
+        )
+        val screen = ScreenText(UBER, lines.map { TextNode(it) }, 1_000L, OfferSource.OCR)
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen)).offer
+        assertEquals(6.0, o.estimatedPayout)
+        assertEquals(8.0, o.distanceKm)
+        assertEquals(22.0, o.durationMinutes)
+        // 达标 8 × 0.236 + 22 × 0.30 = 8.49；不含小费 6 × 0.85 = 5.10 → 红
+        assertEquals(Verdict.LOSS, OfferEvaluator().evaluate(o).verdict)
+    }
+}

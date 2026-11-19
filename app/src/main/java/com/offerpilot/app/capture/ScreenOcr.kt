@@ -95,8 +95,9 @@ class ScreenOcr(
                 }
 
                 override fun onFailure(errorCode: Int) {
-                    Log.w(TAG, "screenshot failed: $errorCode")
-                    onResult(null)
+                    Log.w(TAG, "screenshot failed: $errorCode (windowOnly=$windowOnly)")
+                    // 单窗口截图失败（例如读不到内容的悬浮窗口）→ 退回全屏截图 + 裁剪
+                    if (windowOnly) recognize(region, -1, packageName, onResult) else onResult(null)
                 }
             }
             if (windowOnly) service.takeScreenshotOfWindow(windowId, executor, callback)
