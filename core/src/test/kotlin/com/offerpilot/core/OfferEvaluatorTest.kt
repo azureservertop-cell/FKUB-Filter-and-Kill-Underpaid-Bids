@@ -6,13 +6,16 @@ import com.offerpilot.core.model.UnknownReason
 import com.offerpilot.core.model.Verdict
 import com.offerpilot.core.rules.EvaluatorSettings
 import com.offerpilot.core.rules.OfferEvaluator
+import com.offerpilot.core.rules.RuleMode
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/** PRD 3.1 简单规则模式（max(公里×0.8, 分钟×0.5)）下的测试。默认净时薪模式见 NetHourlyEvaluatorTest。 */
 class OfferEvaluatorTest {
-    private val ev = OfferEvaluator()
+    private val simple = EvaluatorSettings(mode = RuleMode.PER_KM_PER_MINUTE)
+    private val ev = OfferEvaluator(simple)
     private fun near(expected: Double, actual: Double?, eps: Double = 0.005) =
         assertTrue(actual != null && kotlin.math.abs(expected - actual) < eps, "expected $expected but was $actual")
 
@@ -50,13 +53,13 @@ class OfferEvaluatorTest {
     }
 
     @Test fun custom_thresholds() {
-        val strict = OfferEvaluator(EvaluatorSettings(minPerKm = 1.0, minPerMinute = 0.6, goodRatio = 1.5))
+        val strict = OfferEvaluator(simple.copy(minPerKm = 1.0, minPerMinute = 0.6, goodRatio = 1.5))
         val r = strict.evaluate(offer(7.0, 3.0, 10.0)) // req max(3, 6) = 6, ratio 1.17
         assertEquals(Verdict.MARGINAL, r.verdict)
     }
 
     @Test fun min_order_amount() {
-        val s = OfferEvaluator(EvaluatorSettings(minOrderAmount = 8.0))
+        val s = OfferEvaluator(simple.copy(minOrderAmount = 8.0))
         val r = s.evaluate(offer(7.0, 3.0, 10.0))
         assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
         assertTrue(r.belowMinimumOrder)
@@ -113,7 +116,7 @@ class OfferEvaluatorTest {
     }
 
     @Test fun vehicle_cost_display_only() {
-        // 10L/100km * 1.36 + 0.10 = 0.236 $/km → 29.92km = 7.06
+        // (10L × 1.36 + $10) / 100 = 0.236 $/km → 29.92km = 7.06
         val r = ev.evaluate(offer(9.0, 29.92, 42.0))
         near(7.06, r.vehicleCost, 0.01)
         near(1.94, r.netAfterVehicleCost, 0.01)

@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.offerpilot.core.rules.EvaluatorSettings
+import com.offerpilot.core.rules.RuleMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -25,7 +26,9 @@ class SettingsRepository(private val context: Context) {
         val passRatio = doublePreferencesKey("pass_ratio")
         val fuelL = doublePreferencesKey("fuel_l_per_100km")
         val fuelPrice = doublePreferencesKey("fuel_price")
-        val wear = doublePreferencesKey("wear_per_km")
+        val maintenance = doublePreferencesKey("maintenance_per_100km")
+        val mode = stringPreferencesKey("rule_mode")
+        val targetHourly = doublePreferencesKey("target_net_hourly")
         val outOfTown = booleanPreferencesKey("out_of_town_alert")
         val monitoring = booleanPreferencesKey("monitoring_enabled")
         val tts = booleanPreferencesKey("tts_enabled")
@@ -54,7 +57,9 @@ class SettingsRepository(private val context: Context) {
                 passRatio = this[K.passRatio] ?: e.passRatio,
                 fuelLitersPer100Km = this[K.fuelL] ?: e.fuelLitersPer100Km,
                 fuelPricePerLiter = this[K.fuelPrice] ?: e.fuelPricePerLiter,
-                wearPerKm = this[K.wear] ?: e.wearPerKm,
+                maintenancePer100Km = this[K.maintenance] ?: e.maintenancePer100Km,
+                mode = this[K.mode]?.let { runCatching { RuleMode.valueOf(it) }.getOrNull() } ?: e.mode,
+                targetNetHourly = this[K.targetHourly] ?: e.targetNetHourly,
                 outOfTownAlert = this[K.outOfTown] ?: e.outOfTownAlert,
             ),
             monitoringEnabled = this[K.monitoring] ?: d.monitoringEnabled,
@@ -83,7 +88,9 @@ class SettingsRepository(private val context: Context) {
             p[K.passRatio] = e.passRatio
             p[K.fuelL] = e.fuelLitersPer100Km
             p[K.fuelPrice] = e.fuelPricePerLiter
-            p[K.wear] = e.wearPerKm
+            p[K.maintenance] = e.maintenancePer100Km
+            p[K.mode] = e.mode.name
+            p[K.targetHourly] = e.targetNetHourly
             p[K.outOfTown] = e.outOfTownAlert
             p[K.monitoring] = n.monitoringEnabled
             p[K.tts] = n.ttsEnabled

@@ -30,6 +30,8 @@ data class EvaluationResult(
     val vehicleCost: Double?,
     /** 报价 - 车辆成本，仅展示用。 */
     val netAfterVehicleCost: Double?,
+    /** 预计净时薪 =（报价 - 车辆成本）/ 小时（含返程时间）。 */
+    val netHourly: Double? = null,
     /** 报价低于用户设置的最低订单金额。 */
     val belowMinimumOrder: Boolean = false,
     val unknownReasons: List<UnknownReason> = emptyList(),

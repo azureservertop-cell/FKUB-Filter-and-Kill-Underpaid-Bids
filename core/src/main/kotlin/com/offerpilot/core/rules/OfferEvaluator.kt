@@ -13,8 +13,10 @@ import kotlin.math.max
  *
  * 只接收 [DeliveryOffer]，不依赖 AccessibilityService 或任何 Android 类。
  *
- * 最低接受报价 = max(公里 × minPerKm, 分钟 × minPerMinute)
- * 有返程时   = max((配送公里 + 返程公里) × minPerKm, (配送分钟 + 返程分钟) × minPerMinute)
+ * 默认（NET_HOURLY）：最低报价 = 公里 × 每公里车辆成本 + 小时 × 目标净时薪
+ *   distanceRequirement = 车辆成本部分，timeRequirement = 净时薪部分，requiredPrice = 两者之和
+ * 简单规则（PER_KM_PER_MINUTE）：最低报价 = max(公里 × minPerKm, 分钟 × minPerMinute)
+ * 有返程时公里和分钟都加上返程部分。
  */
 class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings()) {
 
@@ -55,9 +57,21 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
 
         val totalKm = km + (returnTrip?.km ?: 0.0)
         val totalMin = min + (returnTrip?.minutes ?: 0.0)
-        val distanceReq = totalKm * settings.minPerKm
-        val timeReq = totalMin * settings.minPerMinute
-        val required = max(distanceReq, timeReq)
+        val distanceReq: Double
+        val timeReq: Double
+        val required: Double
+        when (settings.mode) {
+            RuleMode.NET_HOURLY -> {
+                distanceReq = totalKm * settings.vehicleCostPerKm
+                timeReq = totalMin * settings.netPerMinute
+                required = distanceReq + timeReq
+            }
+            RuleMode.PER_KM_PER_MINUTE -> {
+                distanceReq = totalKm * settings.minPerKm
+                timeReq = totalMin * settings.minPerMinute
+                required = max(distanceReq, timeReq)
+            }
+        }
         val ratio = payout / required
         val belowMin = settings.minOrderAmount > 0 && payout < settings.minOrderAmount
 
@@ -76,6 +90,7 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
             timeRequirement = timeReq,
             vehicleCost = vehicleCost,
             netAfterVehicleCost = vehicleCost?.let { payout - it },
+            netHourly = vehicleCost?.let { (payout - it) / (totalMin / 60.0) },
             belowMinimumOrder = belowMin,
         )
     }
