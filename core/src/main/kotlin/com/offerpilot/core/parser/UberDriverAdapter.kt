@@ -40,9 +40,10 @@ class UberDriverAdapter(
         var repairedPrice = false
         val nodes = screen.nodes.filter { it.text.isNotBlank() }.map { n ->
             if (screen.source != com.offerpilot.core.model.OfferSource.OCR) return@map n
-            val (t, changed) = OfferParser.repairOcrPriceLine(n.text)
-            if (changed) repairedPrice = true
-            if (changed) n.copy(text = t) else n
+            val (t1, priceFixed) = OfferParser.repairOcrPriceLine(n.text)
+            val (t, tripFixed) = OfferParser.repairOcrTripLine(t1)
+            if (priceFixed || tripFixed) repairedPrice = true
+            if (t != n.text) n.copy(text = t) else n
         }
 
         val money = mutableListOf<Cand>()

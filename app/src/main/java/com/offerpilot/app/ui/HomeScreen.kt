@@ -75,6 +75,14 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                     "${DateFormat.getTimeInstance().format(Date(it.timeMs))} · ${if (it.success) tr("OK", "成功") else tr("unknown", "无法判断")} · ${it.summary}"
                 } ?: tr("none yet", "暂无"))
             )
+            // When the last offer couldn't be judged, show what was read and why, to make misreads easy to report.
+            if (last != null && !last.success) {
+                Text(
+                    last.detail + (status.lastAdapterNote?.let { "\n" + it } ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (!status.serviceConnected) {
                 Button(onClick = { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) {
                     Text(tr("Open accessibility settings", "打开系统无障碍设置"))

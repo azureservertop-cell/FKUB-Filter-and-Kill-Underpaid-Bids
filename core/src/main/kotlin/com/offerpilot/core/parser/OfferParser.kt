@@ -112,6 +112,14 @@ object OfferParser {
      * Returns (repaired text, whether anything was repaired). Lines that aren't a standalone amount are returned unchanged.
      */
     fun repairOcrPriceLine(line: String): Pair<String, Boolean> {
+        // Letters OCR often confuses with digits ("CA$25.O7"), only after a leading currency symbol.
+        val lookalikes = OCR_PRICE_PREFIX.find(line)?.let { p ->
+            line.substring(0, p.range.last + 1) + line.substring(p.range.last + 1).map { DIGIT_LOOKALIKES[it] ?: it }.joinToString("")
+        } ?: line
+        if (lookalikes != line) {
+            val (fixed, _) = repairOcrPriceLine(lookalikes)
+            return if (OCR_PRICE_LINE.matches(lookalikes.trim())) fixed to true else line to false
+        }
         val m = OCR_PRICE_LINE.matchEntire(line.trim()) ?: return line to false
         val prefix = m.groupValues[1]
         val symbol = line.trim().substring(m.groups[2]!!.range.first - 1).first { it == '$' || it == 'S' || it == 's' }
@@ -126,6 +134,31 @@ object OfferParser {
         val out = "CA$" + fixed
         val original = line.trim()
         return out to (out != original && !(original.endsWith(fixed) && symbol == '$' && cents.isEmpty() && whole.length < 3))
+    }
+
+    private val OCR_PRICE_PREFIX = Regex("""^\s*(CA|C|CAD)?\s?[${'$'}]\s?(?=[\dOoIl|])""", RegexOption.IGNORE_CASE)
+    private val DIGIT_LOOKALIKES = mapOf('O' to '0', 'o' to '0', 'I' to '1', 'l' to '1', '|' to '1')
+
+    private val TRIP_LINE = Regex("""(km|krn|kn)\b|\b(min|mins|hr|hrs)\b""", RegexOption.IGNORE_CASE)
+    private val LOOKALIKE_BEFORE_UNIT = Regex("""(?<![A-Za-z0-9])[lI|](?=\s?(?:hr|hrs|h|min|mins)\b)""")
+    private val LOOKALIKE_IN_NUMBER = Regex("""(?<=\d[.,]?)[Oo]|[Oo](?=[.,]?\d)|(?<=\d)[lI|]|[lI|](?=[.,]?\d)""")
+    private val INTEGER_KM = Regex("""(?<![\d.,])(\d{2,4})(\s?km\b)""", RegexOption.IGNORE_CASE)
+
+    /**
+     * Repairs common OCR misreads of the trip line, e.g. "1 hr 1 min (31.0 km) total". On real devices Uber always
+     * shows distance with one decimal ("1.3 km", "8.0 km", "31.0 km"), so:
+     *  - a lost decimal point in the distance: "(310 km)" → "(31.0 km)" (2–4 digit integer before "km");
+     *  - letters read as digits: "l hr l min" → "1 hr 1 min", "31.O km" → "31.0 km";
+     *  - "krn" / "kn" read for "km".
+     * Returns (repaired text, whether anything was repaired). Lines without a time or distance unit are returned unchanged.
+     */
+    fun repairOcrTripLine(line: String): Pair<String, Boolean> {
+        if (!TRIP_LINE.containsMatchIn(line)) return line to false
+        var s = line.replace(Regex("""(?<=[\d\s])(krn|kn)\b""", RegexOption.IGNORE_CASE), "km")
+        s = LOOKALIKE_BEFORE_UNIT.replace(s, "1")
+        s = LOOKALIKE_IN_NUMBER.replace(s) { m -> if (m.value in "Oo") "0" else "1" }
+        s = INTEGER_KM.replace(s) { m -> m.groupValues[1].dropLast(1) + "." + m.groupValues[1].takeLast(1) + m.groupValues[2] }
+        return s to (s != line)
     }
 
     fun parseMoney(text: String): Double? = findMoney(text).singleOrNull()?.value
