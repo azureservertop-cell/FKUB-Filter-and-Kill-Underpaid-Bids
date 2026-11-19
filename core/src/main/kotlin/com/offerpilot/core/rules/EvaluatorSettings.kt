@@ -28,9 +28,9 @@ data class EvaluatorSettings(
     val minOrderAmount: Double = 0.0,
     /**
      * 显示价中不含小费的比例。Uber 显示的是"含预估小费"的价格，小费不一定兑现，
-     * 所以判断时只用 显示价 × 此比例。默认 0.8（用户实测）。设为 1 表示不扣。
+     * 所以判断时只用 显示价 × 此比例。默认 0.85（约 15–18% 小费）。设为 1 表示不扣。
      */
-    val tipFreeShare: Double = 0.80,
+    val tipFreeShare: Double = 0.85,
     /** ratio ≥ 1 为黄色（刚好达标）；≥ 此值为绿色（比较赚）。 */
     val goodRatio: Double = 1.2,
     /** ratio ≥ 此值为蓝色（无脑接）。 */

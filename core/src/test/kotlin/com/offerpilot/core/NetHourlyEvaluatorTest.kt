@@ -22,7 +22,7 @@ class NetHourlyEvaluatorTest {
         val s = EvaluatorSettings()
         assertEquals(RuleMode.NET_HOURLY, s.mode)
         assertEquals(18.0, s.targetNetHourly)
-        assertEquals(0.80, s.tipFreeShare)
+        assertEquals(0.85, s.tipFreeShare)
         near(0.236, s.vehicleCostPerKm, 1e-9)
         near(0.30, s.netPerMinute, 1e-9)
     }
@@ -104,23 +104,23 @@ class NetHourlyEvaluatorTest {
         assertEquals(Verdict.LOSS, r.verdict)
     }
 
-    // ---- 默认：不含小费价 = 显示价 × 80% ----
+    // ---- 默认：不含小费价 = 显示价 × 85% ----
     @Test fun tip_free_share_default() {
         val d = OfferEvaluator()
-        // 案例 C：不含小费 5.60；达标 3.71；比值 1.51 → 绿
+        // 案例 C：不含小费 5.95；达标 3.71；比值 1.60 → 绿
         val c = d.evaluate(offer(7.0, 3.0, 10.0))
-        near(5.60, c.basePay)
-        near(1.51, c.ratio)
-        near(29.35, c.netHourly)
+        near(5.95, c.basePay)
+        near(1.60, c.ratio)
+        near(31.45, c.netHourly)
         assertEquals(Verdict.GOOD, c.verdict)
-        // 案例 B：不含小费 26.41 < 达标 28.57 → 红
+        // 案例 B：不含小费 28.06 < 达标 28.57 → 红
         assertEquals(Verdict.LOSS, d.evaluate(offer(33.01, 40.99, 63.0)).verdict)
     }
 
     @Test fun yellow_starts_exactly_at_18_per_hour_plus_vehicle_cost_without_tip() {
         val s = EvaluatorSettings()
-        val shown = s.displayedPriceFor(20.0, 30.0) // 达标 13.72 / 0.8 = 17.15
-        near(17.15, shown)
+        val shown = s.displayedPriceFor(20.0, 30.0) // 达标 13.72 / 0.85 = 16.14
+        near(16.14, shown)
         val r = OfferEvaluator(s).evaluate(offer(shown, 20.0, 30.0))
         near(18.0, r.netHourly, 1e-9)
         assertEquals(Verdict.MIN_WAGE, r.verdict)

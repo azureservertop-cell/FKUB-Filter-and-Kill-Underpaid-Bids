@@ -39,7 +39,7 @@ class RealOfferTest {
         assertEquals(15.0, o.offer.durationMinutes)
         assertEquals(OfferSource.OCR, o.offer.source)
         assertTrue(o.offer.confidence >= 0.6f)
-        // 达标 1.3 × 0.236 + 15 × 0.30 = 4.81；不含小费 5.50 × 0.8 = 4.40；比值 0.91 → 红（不达标）
+        // 达标 1.3 × 0.236 + 15 × 0.30 = 4.81；不含小费 5.50 × 0.85 = 4.68；比值 0.97 → 红（不达标）
         assertEquals(Verdict.LOSS, OfferEvaluator().evaluate(o.offer).verdict)
     }
 
