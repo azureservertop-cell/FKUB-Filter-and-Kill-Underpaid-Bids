@@ -45,28 +45,32 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
 
         Section("自动算出的标准") {
             if (e.mode == RuleMode.NET_HOURLY) {
-                Text("最低报价 = 公里 × ${OfferMessages.money(e.vehicleCostPerKm)} + 分钟 × ${OfferMessages.money(e.netPerMinute)}", style = MaterialTheme.typography.bodyMedium)
+                Text("达标报价 = 公里 × ${OfferMessages.money(e.vehicleCostPerKm)} + 分钟 × ${OfferMessages.money(e.netPerMinute)}", style = MaterialTheme.typography.bodyMedium)
             } else {
-                Text("最低报价 = max(公里 × ${OfferMessages.money(e.minPerKm)}, 分钟 × ${OfferMessages.money(e.minPerMinute)})", style = MaterialTheme.typography.bodyMedium)
+                Text("达标报价 = max(公里 × ${OfferMessages.money(e.minPerKm)}, 分钟 × ${OfferMessages.money(e.minPerMinute)})", style = MaterialTheme.typography.bodyMedium)
             }
-            Text("下表是「刚好达标」的最低报价；达到 ${fmt(e.goodRatio)} 倍算值得考虑。", style = MaterialTheme.typography.bodySmall)
+            Text(
+                "🔴 低于回本价：亏本　🟡 回本 ~ ${fmt(e.goodRatio)} 倍：只够最低工资\n🟢 ${fmt(e.goodRatio)} ~ ${fmt(e.greatRatio)} 倍：比较赚　🔵 ${fmt(e.greatRatio)} 倍以上：无脑接",
+                style = MaterialTheme.typography.bodySmall,
+            )
             Row(Modifier.fillMaxWidth()) {
-                listOf("时间 / 距离", "达标", "值得考虑").forEach { Text(it, Modifier.weight(1f), fontWeight = FontWeight.Bold) }
+                listOf("时间 / 距离", "回本", "🟢 起", "🔵 起").forEach { Text(it, Modifier.weight(1f), fontWeight = FontWeight.Bold) }
             }
             EXAMPLES.forEach { (min, km) ->
                 val req = e.requiredFor(km, min)
                 Row(Modifier.fillMaxWidth()) {
-                    Text("${min.toInt()} 分钟 / ${km.toInt()} km", Modifier.weight(1f))
-                    Text(OfferMessages.money(req), Modifier.weight(1f))
+                    Text("${min.toInt()}分 / ${km.toInt()}km", Modifier.weight(1f))
+                    Text(OfferMessages.money(km * e.vehicleCostPerKm), Modifier.weight(1f))
                     Text(OfferMessages.money(req * e.goodRatio), Modifier.weight(1f))
+                    Text(OfferMessages.money(req * e.greatRatio), Modifier.weight(1f))
                 }
             }
         }
 
-        Section("推荐阈值（可手动调整）") {
-            Text("比值 = 报价 ÷ 最低报价", style = MaterialTheme.typography.bodySmall)
-            NumberField("合格倍率（低于此为不推荐）", e.passRatio, { v -> upd { it.copy(passRatio = v) } }, valid = { it > 0 && it <= e.goodRatio })
-            NumberField("优质倍率（达到此为值得考虑）", e.goodRatio, { v -> upd { it.copy(goodRatio = v) } }, valid = { it >= e.passRatio })
+        Section("档位阈值（可手动调整）") {
+            Text("比值 = 报价 ÷ 达标报价。比值 1.0 正好是期望净时薪。", style = MaterialTheme.typography.bodySmall)
+            NumberField("🟢 绿色起点倍率（低于此为黄色）", e.goodRatio, { v -> upd { it.copy(goodRatio = v) } }, valid = { it > 0 && it <= e.greatRatio })
+            NumberField("🔵 蓝色起点倍率（无脑接）", e.greatRatio, { v -> upd { it.copy(greatRatio = v) } }, valid = { it >= e.goodRatio })
         }
 
         Section("高级：简单规则模式") {

@@ -75,11 +75,13 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
         val ratio = payout / required
         val belowMin = settings.minOrderAmount > 0 && payout < settings.minOrderAmount
 
+        val coversCost = vehicleCost == null || payout + 0.005 >= vehicleCost // 按分比较，避免浮点误差
         val verdict = when {
-            belowMin -> Verdict.NOT_RECOMMENDED
-            ratio < settings.passRatio -> Verdict.NOT_RECOMMENDED
-            ratio < settings.goodRatio -> Verdict.MARGINAL
-            else -> Verdict.RECOMMENDED
+            belowMin -> Verdict.LOSS
+            !coversCost -> Verdict.LOSS
+            ratio < settings.goodRatio -> Verdict.MIN_WAGE
+            ratio < settings.greatRatio -> Verdict.GOOD
+            else -> Verdict.GREAT
         }
 
         return EvaluationResult(

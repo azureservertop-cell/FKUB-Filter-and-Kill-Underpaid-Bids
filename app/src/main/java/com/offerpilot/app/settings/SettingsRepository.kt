@@ -23,7 +23,7 @@ class SettingsRepository(private val context: Context) {
         val perMin = doublePreferencesKey("min_per_minute")
         val minOrder = doublePreferencesKey("min_order_amount")
         val goodRatio = doublePreferencesKey("good_ratio")
-        val passRatio = doublePreferencesKey("pass_ratio")
+        val greatRatio = doublePreferencesKey("great_ratio")
         val fuelL = doublePreferencesKey("fuel_l_per_100km")
         val fuelPrice = doublePreferencesKey("fuel_price")
         val maintenance = doublePreferencesKey("maintenance_per_100km")
@@ -35,6 +35,7 @@ class SettingsRepository(private val context: Context) {
         val vibration = booleanPreferencesKey("vibration_enabled")
         val overlay = booleanPreferencesKey("overlay_enabled")
         val ocr = booleanPreferencesKey("ocr_enabled")
+        val glow = booleanPreferencesKey("edge_glow_enabled")
         val volume = floatPreferencesKey("tts_volume")
         val overlayPos = stringPreferencesKey("overlay_position")
         val overlaySec = intPreferencesKey("overlay_seconds")
@@ -55,7 +56,7 @@ class SettingsRepository(private val context: Context) {
                 minPerMinute = this[K.perMin] ?: e.minPerMinute,
                 minOrderAmount = this[K.minOrder] ?: e.minOrderAmount,
                 goodRatio = this[K.goodRatio] ?: e.goodRatio,
-                passRatio = this[K.passRatio] ?: e.passRatio,
+                greatRatio = this[K.greatRatio] ?: e.greatRatio,
                 fuelLitersPer100Km = this[K.fuelL] ?: e.fuelLitersPer100Km,
                 fuelPricePerLiter = this[K.fuelPrice] ?: e.fuelPricePerLiter,
                 maintenancePer100Km = this[K.maintenance] ?: e.maintenancePer100Km,
@@ -68,6 +69,7 @@ class SettingsRepository(private val context: Context) {
             vibrationEnabled = this[K.vibration] ?: d.vibrationEnabled,
             overlayEnabled = this[K.overlay] ?: d.overlayEnabled,
             ocrEnabled = this[K.ocr] ?: d.ocrEnabled,
+            edgeGlowEnabled = this[K.glow] ?: d.edgeGlowEnabled,
             ttsVolume = this[K.volume] ?: d.ttsVolume,
             overlayPosition = this[K.overlayPos]?.let { runCatching { OverlayPosition.valueOf(it) }.getOrNull() } ?: d.overlayPosition,
             overlaySeconds = this[K.overlaySec] ?: d.overlaySeconds,
@@ -87,7 +89,7 @@ class SettingsRepository(private val context: Context) {
             p[K.perMin] = e.minPerMinute
             p[K.minOrder] = e.minOrderAmount
             p[K.goodRatio] = e.goodRatio
-            p[K.passRatio] = e.passRatio
+            p[K.greatRatio] = e.greatRatio
             p[K.fuelL] = e.fuelLitersPer100Km
             p[K.fuelPrice] = e.fuelPricePerLiter
             p[K.maintenance] = e.maintenancePer100Km
@@ -99,6 +101,7 @@ class SettingsRepository(private val context: Context) {
             p[K.vibration] = n.vibrationEnabled
             p[K.overlay] = n.overlayEnabled
             p[K.ocr] = n.ocrEnabled
+            p[K.glow] = n.edgeGlowEnabled
             p[K.volume] = n.ttsVolume
             p[K.overlayPos] = n.overlayPosition.name
             p[K.overlaySec] = n.overlaySeconds

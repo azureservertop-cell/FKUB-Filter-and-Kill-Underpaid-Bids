@@ -260,7 +260,12 @@ class OfferMonitorService : AccessibilityService() {
                 )
             )
         }
-        if (s.overlayEnabled) overlay.show(overlayText, out.result.verdict, s.overlayPosition, s.overlaySeconds)
+        if (s.overlayEnabled || s.edgeGlowEnabled) {
+            overlay.show(
+                overlayText, out.result.verdict, s.overlayPosition, s.overlaySeconds,
+                showText = s.overlayEnabled, showGlow = s.edgeGlowEnabled,
+            )
+        }
         if (out.announce) {
             if (s.ttsEnabled) speaker.speak(OfferMessages.speech(out.offer, out.result), s.ttsVolume)
             if (s.vibrationEnabled) mainHandler.post { runCatching { haptics.play(out.result.verdict) } }

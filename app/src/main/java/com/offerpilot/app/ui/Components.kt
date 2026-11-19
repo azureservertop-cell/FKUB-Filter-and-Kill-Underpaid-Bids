@@ -77,8 +77,9 @@ fun NumberField(
 private fun fmt(v: Double): String = if (v == Math.floor(v)) v.toLong().toString() else v.toString()
 
 fun verdictColor(v: Verdict): Color = when (v) {
-    Verdict.RECOMMENDED -> Color(0xFF1B5E20)
-    Verdict.MARGINAL -> Color(0xFFF9A825)
-    Verdict.NOT_RECOMMENDED -> Color(0xFFB71C1C)
+    Verdict.GREAT -> Color(0xFF1565C0)
+    Verdict.GOOD -> Color(0xFF2E7D32)
+    Verdict.MIN_WAGE -> Color(0xFFF9A825)
+    Verdict.LOSS -> Color(0xFFC62828)
     Verdict.UNKNOWN -> Color(0xFF616161)
 }

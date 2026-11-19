@@ -40,7 +40,7 @@ class RealOfferTest {
         assertEquals(OfferSource.OCR, o.offer.source)
         assertTrue(o.offer.confidence >= 0.6f)
         // 1.3 × 0.236 + 15 × 0.30 = 4.81；5.50 / 4.81 = 1.14 → 勉强合格
-        assertEquals(Verdict.MARGINAL, OfferEvaluator().evaluate(o.offer).verdict)
+        assertEquals(Verdict.MIN_WAGE, OfferEvaluator().evaluate(o.offer).verdict)
     }
 
     @Test fun earnings_pill_does_not_confuse_payout() {

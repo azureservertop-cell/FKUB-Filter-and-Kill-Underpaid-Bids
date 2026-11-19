@@ -26,7 +26,7 @@ class UberDriverAdapterTest {
         assertEquals(29.92, o.offer.distanceKm)
         assertEquals(42.0, o.offer.durationMinutes)
         assertTrue(ParseIssue.ADAPTER_UNVERIFIED in o.offer.issues)
-        assertEquals(Verdict.NOT_RECOMMENDED, ev.evaluate(o.offer).verdict)
+        assertEquals(Verdict.MIN_WAGE, ev.evaluate(o.offer).verdict)
     }
 
     @Test fun other_app_ignored() {
@@ -80,7 +80,7 @@ class UberDriverAdapterTest {
     @Test fun eta_away_is_not_trip_duration() {
         val o = assertIs<AdapterResult.Offer>(adapter.extract(screen("$7.00", "3 min away", "10 min (3 km) total", "Accept"))).offer
         assertEquals(10.0, o.durationMinutes)
-        assertEquals(Verdict.RECOMMENDED, ev.evaluate(o).verdict)
+        assertEquals(Verdict.GREAT, ev.evaluate(o).verdict)
     }
 
     @Test fun incomplete_offer_with_accept_button() {
@@ -99,6 +99,6 @@ class UberDriverAdapterTest {
         val o = assertIs<AdapterResult.Offer>(adapter.extract(screen("$33.01", "2 stops", "1 hr 3 min (40.99 km) total", "Accept"))).offer
         assertEquals(true, o.multiStop)
         assertEquals(63.0, o.durationMinutes)
-        assertEquals(Verdict.MARGINAL, ev.evaluate(o).verdict)
+        assertEquals(Verdict.MIN_WAGE, ev.evaluate(o).verdict)
     }
 }

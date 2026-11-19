@@ -33,7 +33,7 @@ class NetHourlyEvaluatorTest {
         near(12.60, r.timeRequirement)
         near(19.66, r.requiredPrice)
         near(2.77, r.netHourly)
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 
     @Test fun caseB() {
@@ -41,7 +41,7 @@ class NetHourlyEvaluatorTest {
         val r = ev.evaluate(offer(33.01, 40.99, 63.0))
         near(28.57, r.requiredPrice)
         near(22.22, r.netHourly)
-        assertEquals(Verdict.MARGINAL, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 
     @Test fun caseC() {
@@ -49,7 +49,7 @@ class NetHourlyEvaluatorTest {
         val r = ev.evaluate(offer(7.0, 3.0, 10.0))
         near(3.71, r.requiredPrice)
         near(37.75, r.netHourly)
-        assertEquals(Verdict.RECOMMENDED, r.verdict)
+        assertEquals(Verdict.GREAT, r.verdict)
     }
 
     @Test fun ratio_one_means_exactly_target_net_hourly() {
@@ -59,7 +59,7 @@ class NetHourlyEvaluatorTest {
         val r = OfferEvaluator(s).evaluate(offer(required, 20.0, 30.0))
         near(1.0, r.ratio, 1e-9)
         near(18.0, r.netHourly, 1e-9)
-        assertEquals(Verdict.MARGINAL, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 
     @Test fun vehicle_inputs_change_result() {
@@ -67,24 +67,39 @@ class NetHourlyEvaluatorTest {
         val thirsty = OfferEvaluator(EvaluatorSettings(fuelLitersPer100Km = 15.0, maintenancePer100Km = 20.0))
         val r = thirsty.evaluate(offer(33.01, 40.99, 63.0))
         near(35.46, r.requiredPrice)
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 
     @Test fun higher_target_hourly() {
         val r = OfferEvaluator(EvaluatorSettings(targetNetHourly = 30.0)).evaluate(offer(33.01, 40.99, 63.0))
         near(41.17, r.requiredPrice) // 9.67 + 31.50
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
+    }
+
+    @Test fun loss_when_payout_below_vehicle_cost() {
+        // 30km 成本 7.08；$6 不够回本 → 红
+        val r = ev.evaluate(offer(6.0, 30.0, 40.0))
+        near(7.08, r.vehicleCost)
+        assertEquals(Verdict.LOSS, r.verdict)
+        assertTrue(r.netHourly!! < 0)
+    }
+
+    @Test fun great_tier() {
+        val r = OfferEvaluator(EvaluatorSettings(greatRatio = 1.5)).evaluate(offer(7.0, 3.0, 10.0)) // 1.89
+        assertEquals(Verdict.GREAT, r.verdict)
+        val r2 = OfferEvaluator(EvaluatorSettings(greatRatio = 2.0)).evaluate(offer(7.0, 3.0, 10.0))
+        assertEquals(Verdict.GOOD, r2.verdict)
     }
 
     @Test fun manual_thresholds() {
         val r = OfferEvaluator(EvaluatorSettings(goodRatio = 1.1)).evaluate(offer(33.01, 40.99, 63.0))
-        assertEquals(Verdict.RECOMMENDED, r.verdict)
+        assertEquals(Verdict.GOOD, r.verdict)
     }
 
     @Test fun return_trip_adds_cost_and_time() {
         // 案例 B + 返程 20km / 20min：(60.99 × 0.236) + (83 × 0.30) = 14.39 + 24.90 = 39.29
         val r = ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(20.0, 20.0))
         near(39.29, r.requiredPrice)
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 }

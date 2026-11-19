@@ -77,7 +77,11 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             Text("提示音量 ${(s.ttsVolume * 100).roundToInt()}%")
             Slider(value = s.ttsVolume, onValueChange = { v -> upd { it.copy(ttsVolume = v) } })
             SwitchRow("震动", s.vibrationEnabled, { v -> upd { it.copy(vibrationEnabled = v) } })
-            SwitchRow("悬浮提示", s.overlayEnabled, { v -> upd { it.copy(overlayEnabled = v) } })
+            SwitchRow(
+                "屏幕边缘发光", s.edgeGlowEnabled, { v -> upd { it.copy(edgeGlowEnabled = v) } },
+                "蓝 = 无脑接，绿 = 比较赚，黄 = 只够最低工资，红 = 亏本",
+            )
+            SwitchRow("文字小条（金额 / 公里 / 净时薪）", s.overlayEnabled, { v -> upd { it.copy(overlayEnabled = v) } })
             SwitchRow(
                 "截图识别（OCR）", s.ocrEnabled, { v -> upd { it.copy(ocrEnabled = v) } },
                 "Uber 弹出订单时会隐藏文字，需要截图后在本机识别。截图不保存、不上传",

@@ -116,7 +116,7 @@ fun MockOfferScreen(s: AppSettings, modifier: Modifier) {
             Section("结果") {
                 Text(
                     OfferMessages.overlay(offer, r),
-                    color = if (r.verdict == Verdict.MARGINAL) Color.Black else Color.White,
+                    color = if (r.verdict == Verdict.MIN_WAGE) Color.Black else Color.White,
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.background(verdictColor(r.verdict), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 8.dp),
                 )

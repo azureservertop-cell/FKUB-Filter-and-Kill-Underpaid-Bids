@@ -1,10 +1,17 @@
 package com.offerpilot.core.model
 
-/** 判断结果（PRD 3.2）。 */
+/**
+ * 判断结果：四档（屏幕边缘发光颜色）+ 无法判断。
+ *  - LOSS 红：报价不够油费 + 维护，亏本
+ *  - MIN_WAGE 黄：能回本，但比值 < goodRatio，大致只是最低工资水平
+ *  - GOOD 绿：goodRatio ≤ 比值 < greatRatio，比较赚
+ *  - GREAT 蓝：比值 ≥ greatRatio，无脑接
+ */
 enum class Verdict(val label: String, val shortLabel: String, val speech: String) {
-    NOT_RECOMMENDED("不推荐", "不推荐", "不推荐"),
-    MARGINAL("勉强合格", "勉强合格", "勉强合格"),
-    RECOMMENDED("值得考虑", "推荐", "可以考虑"),
+    LOSS("亏本", "亏本", "亏本"),
+    MIN_WAGE("最低工资水平", "保底", "只够最低工资"),
+    GOOD("比较赚", "比较赚", "比较赚"),
+    GREAT("无脑接", "无脑接", "无脑接"),
     UNKNOWN("无法判断", "无法判断", "订单信息不完整"),
 }
 

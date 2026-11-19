@@ -24,8 +24,26 @@ class OverlayController(private val service: AccessibilityService) {
     private var view: TextView? = null
     private val hideRunnable = Runnable { hide() }
 
-    fun show(text: String, verdict: Verdict, position: OverlayPosition, seconds: Int) {
+    private var glow: EdgeGlowView? = null
+
+    /**
+     * 显示结论。[showText] 控制文字小条，[showGlow] 控制屏幕边缘发光（无法判断时不发光）。
+     */
+    fun show(text: String, verdict: Verdict, position: OverlayPosition, seconds: Int, showText: Boolean = true, showGlow: Boolean = true) {
         main.post {
+            main.removeCallbacks(hideRunnable)
+            main.postDelayed(hideRunnable, seconds.coerceIn(2, 60) * 1000L)
+            if (showGlow && verdict != Verdict.UNKNOWN) {
+                val g = glow ?: EdgeGlowView(service).also { v ->
+                    runCatching { wm.addView(v, glowParams()) }.onFailure { return@also }
+                    glow = v
+                }
+                g.setGlowColor(colorFor(verdict) or 0xFF000000.toInt())
+                g.startPulse()
+            } else {
+                removeGlow()
+            }
+            if (!showText) { removeText(); return@post }
             val tv = view ?: createView().also { v ->
                 runCatching { wm.addView(v, params(position)) }.onFailure { return@post }
                 view = v
@@ -33,18 +51,39 @@ class OverlayController(private val service: AccessibilityService) {
             runCatching { wm.updateViewLayout(tv, params(position)) }
             tv.text = text
             (tv.background as GradientDrawable).setColor(colorFor(verdict))
-            tv.setTextColor(if (verdict == Verdict.MARGINAL) Color.BLACK else Color.WHITE)
-            main.removeCallbacks(hideRunnable)
-            main.postDelayed(hideRunnable, seconds.coerceIn(2, 60) * 1000L)
+            tv.setTextColor(if (verdict == Verdict.MIN_WAGE) Color.BLACK else Color.WHITE)
         }
     }
 
     fun hide() {
         main.post {
             main.removeCallbacks(hideRunnable)
-            view?.let { runCatching { wm.removeView(it) } }
-            view = null
+            removeText()
+            removeGlow()
         }
+    }
+
+    private fun removeText() {
+        view?.let { runCatching { wm.removeView(it) } }
+        view = null
+    }
+
+    private fun removeGlow() {
+        glow?.let { it.stopPulse(); runCatching { wm.removeView(it) } }
+        glow = null
+    }
+
+    private fun glowParams() = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.MATCH_PARENT,
+        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
     }
 
     private var badge: TextView? = null
@@ -99,9 +138,10 @@ class OverlayController(private val service: AccessibilityService) {
     }
 
     private fun colorFor(v: Verdict) = when (v) {
-        Verdict.RECOMMENDED -> Color.parseColor("#E61B5E20")
-        Verdict.MARGINAL -> Color.parseColor("#E6FBC02D")
-        Verdict.NOT_RECOMMENDED -> Color.parseColor("#E6B71C1C")
+        Verdict.GREAT -> Color.parseColor("#E61E88E5")
+        Verdict.GOOD -> Color.parseColor("#E643A047")
+        Verdict.MIN_WAGE -> Color.parseColor("#E6FBC02D")
+        Verdict.LOSS -> Color.parseColor("#E6E53935")
         Verdict.UNKNOWN -> Color.parseColor("#E6616161")
     }
 }

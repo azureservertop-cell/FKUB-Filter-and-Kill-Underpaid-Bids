@@ -25,7 +25,7 @@ class OfferEvaluatorTest {
         near(23.94, r.distanceRequirement)
         near(21.0, r.timeRequirement)
         near(23.94, r.requiredPrice)
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 
     @Test fun caseB_walmartMultiStop_marginal() {
@@ -33,7 +33,7 @@ class OfferEvaluatorTest {
         near(32.79, r.distanceRequirement)
         near(31.50, r.timeRequirement)
         near(32.79, r.requiredPrice)
-        assertEquals(Verdict.MARGINAL, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 
     @Test fun caseC_short_recommended() {
@@ -41,27 +41,34 @@ class OfferEvaluatorTest {
         near(2.40, r.distanceRequirement)
         near(5.0, r.timeRequirement)
         near(5.0, r.requiredPrice)
-        assertEquals(Verdict.RECOMMENDED, r.verdict)
+        assertEquals(Verdict.GOOD, r.verdict)
     }
 
     // ---- 边界 ----
+    @Test fun tier_boundaries() {
+        assertEquals(Verdict.GREAT, ev.evaluate(offer(14.4, 10.0, 10.0)).verdict)   // ratio 1.8
+        assertEquals(Verdict.GOOD, ev.evaluate(offer(14.39, 10.0, 10.0)).verdict)
+        assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(2.36, 10.0, 10.0)).verdict) // 正好回本（成本 2.36）
+        assertEquals(Verdict.LOSS, ev.evaluate(offer(2.35, 10.0, 10.0)).verdict)     // 不够成本
+    }
+
     @Test fun ratio_exactly_1_is_marginal_and_1_2_is_recommended() {
-        assertEquals(Verdict.MARGINAL, ev.evaluate(offer(8.0, 10.0, 10.0)).verdict)   // req 8, ratio 1.0
-        assertEquals(Verdict.RECOMMENDED, ev.evaluate(offer(9.6, 10.0, 10.0)).verdict) // ratio 1.2
-        assertEquals(Verdict.NOT_RECOMMENDED, ev.evaluate(offer(7.99, 10.0, 10.0)).verdict)
-        assertEquals(Verdict.MARGINAL, ev.evaluate(offer(9.59, 10.0, 10.0)).verdict)
+        assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(8.0, 10.0, 10.0)).verdict)   // req 8, ratio 1.0
+        assertEquals(Verdict.GOOD, ev.evaluate(offer(9.6, 10.0, 10.0)).verdict) // ratio 1.2
+        assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(7.99, 10.0, 10.0)).verdict)
+        assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(9.59, 10.0, 10.0)).verdict)
     }
 
     @Test fun custom_thresholds() {
         val strict = OfferEvaluator(simple.copy(minPerKm = 1.0, minPerMinute = 0.6, goodRatio = 1.5))
         val r = strict.evaluate(offer(7.0, 3.0, 10.0)) // req max(3, 6) = 6, ratio 1.17
-        assertEquals(Verdict.MARGINAL, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
     }
 
     @Test fun min_order_amount() {
         val s = OfferEvaluator(simple.copy(minOrderAmount = 8.0))
         val r = s.evaluate(offer(7.0, 3.0, 10.0))
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertEquals(Verdict.LOSS, r.verdict)
         assertTrue(r.belowMinimumOrder)
     }
 
@@ -110,9 +117,9 @@ class OfferEvaluatorTest {
         // 案例 B 加 20km / 20min 返程：max(60.99*0.8, 83*0.5) = 48.79 → ratio 0.68
         val r = ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(20.0, 20.0))
         near(48.79, r.requiredPrice)
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict)
+        assertEquals(Verdict.MIN_WAGE, r.verdict)
         // 返程 0 时与无返程一致
-        assertEquals(Verdict.MARGINAL, ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(0.0, 0.0)).verdict)
+        assertEquals(Verdict.MIN_WAGE, ev.evaluate(offer(33.01, 40.99, 63.0), returnTrip = ReturnTrip(0.0, 0.0)).verdict)
     }
 
     @Test fun vehicle_cost_display_only() {
@@ -120,6 +127,6 @@ class OfferEvaluatorTest {
         val r = ev.evaluate(offer(9.0, 29.92, 42.0))
         near(7.06, r.vehicleCost, 0.01)
         near(1.94, r.netAfterVehicleCost, 0.01)
-        assertEquals(Verdict.NOT_RECOMMENDED, r.verdict) // 车辆成本不改变判断公式
+        assertEquals(Verdict.MIN_WAGE, r.verdict) // 能回本但远低于目标 → 黄
     }
 }

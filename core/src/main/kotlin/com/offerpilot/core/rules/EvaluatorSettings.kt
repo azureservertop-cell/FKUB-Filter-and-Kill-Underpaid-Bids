@@ -26,10 +26,10 @@ data class EvaluatorSettings(
     val minPerMinute: Double = 0.50,
     /** 可接受的最低订单金额，0 表示不限制。 */
     val minOrderAmount: Double = 0.0,
-    /** ratio ≥ 此值：值得考虑。 */
+    /** 能回本时：ratio ≥ 此值为绿色（比较赚），否则黄色（最低工资水平）。 */
     val goodRatio: Double = 1.2,
-    /** ratio ≥ 此值：勉强合格；否则不推荐。 */
-    val passRatio: Double = 1.0,
+    /** ratio ≥ 此值为蓝色（无脑接）。 */
+    val greatRatio: Double = 1.8,
     val fuelLitersPer100Km: Double = 10.0,
     val fuelPricePerLiter: Double = 1.36,
     /** 每百公里维护 / 车损费用（保养、轮胎、折旧等）。 */

@@ -13,6 +13,8 @@ data class AppSettings(
     val ttsEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
     val overlayEnabled: Boolean = true,
+    /** 屏幕边缘荧光（蓝绿黄红）。 */
+    val edgeGlowEnabled: Boolean = true,
     /** 节点读不到订单（Uber 隐藏了弹窗内容）时，用无障碍截图 + 本地 OCR 识别。 */
     val ocrEnabled: Boolean = true,
     /** 0.0–1.0 */
