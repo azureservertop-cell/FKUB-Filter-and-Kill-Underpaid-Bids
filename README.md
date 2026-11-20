@@ -159,7 +159,7 @@ The only network requests are for public fuel-price data in Auto mode (Ontario o
 - Verified on one phone (nubia, Android 15) in London, Ontario, with Canadian-dollar offers in English. Other Uber layouts (multi-stop, other languages, other regions) haven't been seen yet; the adapter answers "unknown" rather than guessing.
 - OCR needs Android 14+ for window-only screenshots; Android 11–13 fall back to a full screenshot cropped to Uber's window.
 - Auto fuel price uses government regional averages (weekly for Ontario cities, monthly from Statistics Canada elsewhere), so it lags the pump by days to weeks. The data layouts are discovered at runtime; if a source changes, the app keeps the last price and shows the error.
-- Debug builds only, signed with the debug key.
+- Debug builds only, signed with a fixed debug key kept in the repo (`app/fkub-debug.keystore`), so each new build installs over the last one. Builds from before 2026-11-20 used a random key per build: uninstall those once before installing.
 
 ## Credits
 

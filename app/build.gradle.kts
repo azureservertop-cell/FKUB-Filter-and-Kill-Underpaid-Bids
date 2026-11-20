@@ -12,8 +12,21 @@ android {
         applicationId = "com.offerpilot.app"
         minSdk = 30
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI run number, so every published build is a newer version than the last one
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+    }
+
+    // A fixed debug key checked into the repo. Without it every CI runner generates its own debug key, the APK's
+    // signature changes on every build, and Android refuses to install it over the previous one.
+    // This key only signs public debug builds; it is not a secret.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("fkub-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
