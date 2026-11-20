@@ -14,17 +14,17 @@ import kotlin.test.assertTrue
  * Defaults: 10 L/100km, fuel $1.36/L, maintenance $10/100km → $0.236/km; target $18/h → $0.30/min.
  */
 class NetHourlyEvaluatorTest {
-    private val ev = OfferEvaluator(EvaluatorSettings(tipFreeShare = 1.0))
+    private val ev = OfferEvaluator(EvaluatorSettings(targetNetHourly = 18.0, tipFreeShare = 1.0))
     private fun near(expected: Double, actual: Double?, eps: Double = 0.01) =
         assertTrue(actual != null && kotlin.math.abs(expected - actual) < eps, "expected $expected but was $actual")
 
     @Test fun defaults() {
         val s = EvaluatorSettings()
         assertEquals(RuleMode.NET_HOURLY, s.mode)
-        assertEquals(18.0, s.targetNetHourly)
+        assertEquals(com.offerpilot.core.rules.ONTARIO_MINIMUM_WAGE, s.targetNetHourly)
         assertEquals(0.85, s.tipFreeShare)
         near(0.236, s.vehicleCostPerKm, 1e-9)
-        near(0.30, s.netPerMinute, 1e-9)
+        near(17.95 / 60.0, s.netPerMinute, 1e-9)
     }
 
     @Test fun caseA() {
@@ -54,7 +54,7 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun ratio_one_means_exactly_target_net_hourly() {
-        val s = EvaluatorSettings(tipFreeShare = 1.0)
+        val s = EvaluatorSettings(targetNetHourly = 18.0, tipFreeShare = 1.0)
         val required = s.requiredFor(20.0, 30.0) // 4.72 + 9.00 = 13.72
         near(13.72, required)
         val r = OfferEvaluator(s).evaluate(offer(required, 20.0, 30.0))
@@ -65,7 +65,7 @@ class NetHourlyEvaluatorTest {
 
     @Test fun vehicle_inputs_change_result() {
         // 15 L and $20/100km maintenance → (15×1.36+20)/100 = 0.404/km; case B required = 16.56 + 18.90 = 35.46 → below target
-        val thirsty = OfferEvaluator(EvaluatorSettings(fuelLitersPer100Km = 15.0, maintenancePer100Km = 20.0, tipFreeShare = 1.0))
+        val thirsty = OfferEvaluator(EvaluatorSettings(targetNetHourly = 18.0, fuelLitersPer100Km = 15.0, maintenancePer100Km = 20.0, tipFreeShare = 1.0))
         val r = thirsty.evaluate(offer(33.01, 40.99, 63.0))
         near(35.46, r.requiredPrice)
         assertEquals(Verdict.LOSS, r.verdict)
@@ -86,14 +86,14 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun great_tier() {
-        val r = OfferEvaluator(EvaluatorSettings(greatRatio = 1.5, tipFreeShare = 1.0)).evaluate(offer(7.0, 3.0, 10.0)) // 1.89
+        val r = OfferEvaluator(EvaluatorSettings(targetNetHourly = 18.0, greatRatio = 1.5, tipFreeShare = 1.0)).evaluate(offer(7.0, 3.0, 10.0)) // 1.89
         assertEquals(Verdict.GREAT, r.verdict)
-        val r2 = OfferEvaluator(EvaluatorSettings(greatRatio = 2.0, tipFreeShare = 1.0)).evaluate(offer(7.0, 3.0, 10.0))
+        val r2 = OfferEvaluator(EvaluatorSettings(targetNetHourly = 18.0, greatRatio = 2.0, tipFreeShare = 1.0)).evaluate(offer(7.0, 3.0, 10.0))
         assertEquals(Verdict.GOOD, r2.verdict)
     }
 
     @Test fun manual_thresholds() {
-        val r = OfferEvaluator(EvaluatorSettings(goodRatio = 1.1, tipFreeShare = 1.0)).evaluate(offer(33.01, 40.99, 63.0))
+        val r = OfferEvaluator(EvaluatorSettings(targetNetHourly = 18.0, goodRatio = 1.1, tipFreeShare = 1.0)).evaluate(offer(33.01, 40.99, 63.0))
         assertEquals(Verdict.GOOD, r.verdict)
     }
 
@@ -106,7 +106,7 @@ class NetHourlyEvaluatorTest {
 
     // ---- Default: tip-free pay = shown price × 85% ----
     @Test fun tip_free_share_default() {
-        val d = OfferEvaluator()
+        val d = OfferEvaluator(EvaluatorSettings(targetNetHourly = 18.0))
         // case C: tip-free 5.95; required 3.71; ratio 1.60 → blue (≥ 1.5)
         val c = d.evaluate(offer(7.0, 3.0, 10.0))
         near(5.95, c.basePay)
@@ -118,7 +118,7 @@ class NetHourlyEvaluatorTest {
     }
 
     @Test fun yellow_starts_exactly_at_18_per_hour_plus_vehicle_cost_without_tip() {
-        val s = EvaluatorSettings()
+        val s = EvaluatorSettings(targetNetHourly = 18.0)
         val shown = s.displayedPriceFor(20.0, 30.0) // required 13.72 / 0.85 = 16.14
         near(16.14, shown)
         val r = OfferEvaluator(s).evaluate(offer(shown, 20.0, 30.0))

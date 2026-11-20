@@ -20,7 +20,12 @@ enum class RuleMode {
 data class EvaluatorSettings(
     val mode: RuleMode = RuleMode.NET_HOURLY,
     /** Target net earnings per hour (after fuel and maintenance). */
-    val targetNetHourly: Double = 18.0,
+    /**
+     * Default = Ontario general minimum wage, a public statutory figure: $17.95/h from 2026-10-01 to 2027-09-30
+     * (https://www.ontario.ca/minimumwage). It changes every October 1; update [ONTARIO_MINIMUM_WAGE] then.
+     * Only a starting point: drivers are asked to set their own target.
+     */
+    val targetNetHourly: Double = ONTARIO_MINIMUM_WAGE,
     /** Used by the simple rule mode. */
     val minPerKm: Double = 0.80,
     val minPerMinute: Double = 0.50,
@@ -68,3 +73,6 @@ data class EvaluatorSettings(
     fun displayedPriceFor(km: Double, minutes: Double, ratio: Double = 1.0): Double =
         requiredFor(km, minutes) * ratio / tipFreeShare.coerceAtLeast(0.01)
 }
+
+/** Ontario general minimum wage in $/h, effective 2026-10-01 (changes every October 1). */
+const val ONTARIO_MINIMUM_WAGE = 17.95

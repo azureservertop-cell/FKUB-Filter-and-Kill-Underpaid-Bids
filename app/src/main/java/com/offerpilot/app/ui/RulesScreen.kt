@@ -47,8 +47,8 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
         if (!s.rulesConfirmed) {
             Text(
-                tr("The numbers below are only examples, not a recommendation. Enter your own car costs and the hourly pay you want: FKUB judges every offer by your numbers, and the decision is always yours.",
-                    "下面的数字只是示例，不是推荐标准。请填你自己的车辆成本和你想要的时薪：FKUB 按你的数字判断每一单，接不接永远由你决定。"),
+                tr("The numbers below are only examples, not a recommendation. The target starts at the Ontario minimum wage. Enter your own car costs and the hourly pay you want: FKUB judges every offer by your numbers, and the decision is always yours.",
+                    "下面的数字只是示例，不是推荐标准。目标时薪的初始值是安省最低工资。请填你自己的车辆成本和你想要的时薪：FKUB 按你的数字判断每一单，接不接永远由你决定。"),
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium,
             )
             Button(onClick = { scope.launch { repo.update { it.copy(rulesConfirmed = true) } } }) {
@@ -65,6 +65,11 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
 
         Section(tr("Target earnings", "期望收入")) {
             NumberField(tr("Target net per hour ($/h, after fuel and maintenance)", "期望每小时净赚（$/h，已扣油费和维护）"), e.targetNetHourly, { v -> upd { it.copy(targetNetHourly = v) } }, valid = { it >= 0 })
+            Text(
+                tr("Starts at the Ontario minimum wage ($17.95/h, from Oct 1, 2026). Change it to your own target.",
+                    "初始值是安省最低工资（$17.95/h，2026 年 10 月 1 日起）。请改成你自己的目标。"),
+                style = MaterialTheme.typography.bodySmall,
+            )
             NumberField(
                 tr("Share of shown price that isn't tip (%)", "显示价中不含小费的比例（%）"), e.tipFreeShare * 100, { v -> upd { it.copy(tipFreeShare = v / 100) } },
                 valid = { it in 10.0..100.0 },

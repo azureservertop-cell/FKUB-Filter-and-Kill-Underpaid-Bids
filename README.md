@@ -50,7 +50,7 @@ This works with Uber in the foreground and when Uber pops an offer over another 
 
 ## Rules (default)
 
-On the **Rules** tab enter your car's **fuel consumption (L/100 km)**, **maintenance ($/100 km)**, fuel price (**Auto** by default: the weekly average for your city from public government data, refreshed about twice a day; or **Manual**), your **target net per hour** (default $18) and the **share of the shown price that isn't tip** (default 85%, roughly a 15–18% tip).
+On the **Rules** tab enter your car's **fuel consumption (L/100 km)**, **maintenance ($/100 km)**, fuel price (**Auto** by default: the weekly average for your city from public government data, refreshed about twice a day; or **Manual**), your **target net per hour** (starts at the Ontario minimum wage, $17.95/h from Oct 1, 2026, which changes every Oct 1; set your own) and the **share of the shown price that isn't tip** (default 85%, roughly a 15–18% tip).
 
 ```
 tip-free pay      = Uber's shown price (incl. estimated tip) × 85%
@@ -59,7 +59,7 @@ required pay      = km × vehicle cost/km + hours × target net hourly
 ratio             = tip-free pay / required pay
 
 🔴 red    below target : ratio < 1
-🟡 yellow meets target : 1 ≤ ratio < 1.2, i.e. $18/h net even with no tip
+🟡 yellow meets target : 1 ≤ ratio < 1.2, i.e. your target net hourly even with no tip
 🟢 green  good pay     : 1.2 ≤ ratio < 1.5
 🔵 blue   must take    : ratio ≥ 1.5
 missing / ambiguous / implausible / low confidence / stale → unknown (no glow, grey pill)
@@ -67,14 +67,14 @@ missing / ambiguous / implausible / low confidence / stale → unknown (no glow,
 
 85%, 1.2 and 1.5 are all adjustable. FKUB has no shared or "recommended" standard: the starting numbers are examples, the app asks you to enter your own, and each driver decides by their own numbers. The Rules tab also lists, for your car, the minimum price Uber has to show for each tier at different times and distances.
 
-Example numbers, not a recommendation (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $18/h → $0.30/min; 85% tip-free):
+Example numbers, not a recommendation (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $17.95/h → $0.299/min; 85% tip-free):
 
 | Offer | Shown · distance · time | Tip-free | Required | Ratio | Est. net hourly | Verdict |
 |---|---|---|---|---|---|---|
-| A | $9 · 29.92 km · 42 min | $7.65 | $19.66 | 0.39 | $0.84/h | 🔴 below target |
-| B | $33.01 · 40.99 km · 63 min | $28.06 | $28.57 | 0.98 | $17.51/h | 🔴 below target (short by $0.60) |
-| C | $7 · 3 km · 10 min | $5.95 | $3.71 | 1.60 | $31.45/h | 🔵 must take |
-| Real | $5.50 · 1.3 km · 15 min | $4.68 | $4.81 | 0.97 | $17.47/h | 🔴 below target (short by $0.16) |
+| A | $9 · 29.92 km · 42 min | $7.65 | $19.63 | 0.39 | $0.84/h | 🔴 below target |
+| B | $33.01 · 40.99 km · 63 min | $28.06 | $28.52 | 0.98 | $17.51/h | 🔴 below target (short by $0.46) |
+| C | $7 · 3 km · 10 min | $5.95 | $3.70 | 1.61 | $31.45/h | 🔵 must take |
+| Real | $5.50 · 1.3 km · 15 min | $4.68 | $4.79 | 0.98 | $17.47/h | 🔴 below target (short by $0.12) |
 
 Under **Advanced** you can switch to the simple rule from the original spec, `max(km × $0.80, min × $0.50)` (also applied to the tip-free pay).
 
