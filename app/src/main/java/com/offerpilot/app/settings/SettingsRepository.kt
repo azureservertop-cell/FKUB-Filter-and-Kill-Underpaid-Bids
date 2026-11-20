@@ -48,6 +48,7 @@ class SettingsRepository(private val context: Context) {
         val snapShot = booleanPreferencesKey("snapshot_screenshot")
         val logUnreadable = booleanPreferencesKey("log_unreadable")
         val history = booleanPreferencesKey("history_enabled")
+        val homeCities = stringPreferencesKey("home_cities")
         val targets = stringPreferencesKey("target_packages")
         val language = stringPreferencesKey("language")
         val fuelMode = stringPreferencesKey("fuel_mode")
@@ -116,6 +117,7 @@ class SettingsRepository(private val context: Context) {
             snapshotScreenshot = this[K.snapShot] ?: d.snapshotScreenshot,
             logUnreadable = this[K.logUnreadable] ?: d.logUnreadable,
             historyEnabled = this[K.history] ?: d.historyEnabled,
+            homeCities = this[K.homeCities] ?: d.homeCities,
             targetPackages = this[K.targets]?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
                 ?.ifEmpty { null } ?: d.targetPackages,
         )
@@ -157,6 +159,7 @@ class SettingsRepository(private val context: Context) {
             p[K.snapShot] = n.snapshotScreenshot
             p[K.logUnreadable] = n.logUnreadable
             p[K.history] = n.historyEnabled
+            p[K.homeCities] = n.homeCities
             p[K.targets] = n.targetPackages.joinToString(",")
             p[K.language] = n.language.name
             p[K.fuelMode] = n.fuel.mode.name

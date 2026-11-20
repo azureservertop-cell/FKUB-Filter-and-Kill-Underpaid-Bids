@@ -342,7 +342,10 @@ class OfferMonitorService : AccessibilityService() {
     private fun present(out: PipelineOutput.Show, s: AppSettings) {
         if (!out.result.isConclusive && s.logUnreadable && out.offer.source != com.offerpilot.core.model.OfferSource.MOCK) logUnreadable(out, s)
         recordHistory(out, s)
-        val overlayText = OfferMessages.overlay(out.offer, out.result, s.language)
+        // City-only comparison in memory; the city is never logged or stored.
+        val outOfTown = if (!s.evaluator.outOfTownAlert) null
+        else com.offerpilot.core.parser.DropoffCity.outOfTown(out.offer.dropoffCity, s.homeCities.ifBlank { s.fuel.region })
+        val overlayText = OfferMessages.overlay(out.offer, out.result, s.language, outOfTown)
         MonitorState.update {
             it.copy(
                 lastRecognition = LastRecognition(
@@ -362,7 +365,7 @@ class OfferMonitorService : AccessibilityService() {
         if (out.announce) {
             val soundMs = if (s.soundEnabled) sounds.play(out.result.verdict, s.tierSounds[out.result.verdict]) else 0L
             if (s.ttsEnabled) {
-                val text = OfferMessages.speech(out.offer, out.result, s.language)
+                val text = OfferMessages.speech(out.offer, out.result, s.language, outOfTown)
                 pendingSpeech?.let { mainHandler.removeCallbacks(it) }
                 val r = Runnable { pendingSpeech = null; speaker.speak(text, s.ttsVolume) }
                 pendingSpeech = r

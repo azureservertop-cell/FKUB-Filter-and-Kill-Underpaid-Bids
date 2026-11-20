@@ -105,11 +105,28 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             }
         }
 
-        Section(tr("Out-of-town offers", "城外订单")) {
+        Section(tr("Out-of-town offers", "跨城提醒")) {
             SwitchRow(
-                tr("Out-of-town alert", "启用城外订单提醒"), e.outOfTownAlert, { v -> upd { it.copy(outOfTownAlert = v) } },
-                tr("Phase 2 feature: needs real-device proof that the destination can be read reliably; it doesn't change verdicts yet", "第二阶段功能：需要先在真机上确认能可靠读取终点文字，当前版本不会据此改变判断"),
+                tr("Out-of-town alert", "跨城提醒"), e.outOfTownAlert, { v -> upd { it.copy(outOfTownAlert = v) } },
+                tr("When the city in the drop-off address isn't one of yours, the pill shows ⚠ and the city, and speech adds “watch the empty return”. Only the city name is compared, in memory, then discarded. It doesn't change the verdict.",
+                    "目的地地址里的城市不是你设置的城市时，提示条显示 ⚠ 和城市名，语音提醒“注意空驶回程”。只在内存中比对城市名，比完即丢弃，不影响档位判断。"),
             )
+            if (e.outOfTownAlert) {
+                val sAll = s
+                var cities by remember(sAll.homeCities) { mutableStateOf(sAll.homeCities) }
+                OutlinedTextField(
+                    cities,
+                    { v -> cities = v; scope.launch { repo.update { it.copy(homeCities = v) } } },
+                    label = { Text(tr("Your cities (comma separated)", "你的城市（多个用逗号分隔）")) },
+                    placeholder = { Text(sAll.fuel.region) },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    tr("Blank uses your fuel-price city (${sAll.fuel.region}). Add nearby towns you don't mind, e.g. “London, Thamesford”.",
+                        "留空则使用油价城市（${sAll.fuel.region}）。不介意的周边城镇也可以加上，例如“London, Thamesford”。"),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
         }
         OutlinedButton(onClick = { scope.launch { repo.update { it.copy(evaluator = EvaluatorSettings()) } } }) {
             Text(tr("Reset rules to defaults", "恢复默认规则"))

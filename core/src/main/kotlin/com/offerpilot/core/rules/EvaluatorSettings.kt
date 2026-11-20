@@ -43,7 +43,8 @@ data class EvaluatorSettings(
     val minConfidence: Float = 0.6f,
     /** Offer data older than this many ms is stale. */
     val maxOfferAgeMs: Long = 30_000,
-    val outOfTownAlert: Boolean = false,
+    /** Alert when the drop-off city differs from the driver's own city (city only; doesn't change the verdict). */
+    val outOfTownAlert: Boolean = true,
     /** Plausibility limits: anything beyond is treated as bad data. */
     val maxPlausiblePayout: Double = 500.0,
     val maxPlausibleKm: Double = 300.0,

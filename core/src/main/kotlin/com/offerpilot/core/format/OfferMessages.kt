@@ -14,15 +14,21 @@ object OfferMessages {
      * Overlay pill: shows only the estimated net hourly (the tier is shown by the edge colour; distance is already in the net hourly).
      * EN: "Net $17/h", "Net -$4/h", "Unreadable"; ZH: "净 $17/h", "净 -$4/h", "无法识别".
      */
-    fun overlay(offer: DeliveryOffer, result: EvaluationResult, lang: Lang = Lang.EN): String {
-        val h = result.netHourly?.takeIf { result.isConclusive } ?: return lang.t("Unreadable", "无法识别")
+    fun overlay(offer: DeliveryOffer, result: EvaluationResult, lang: Lang = Lang.EN, outOfTown: String? = null): String {
+        val town = outOfTown?.let { "⚠ $it · " } ?: ""
+        val h = result.netHourly?.takeIf { result.isConclusive } ?: return town + lang.t("Unreadable", "无法识别")
         val v = h.roundToInt()
         val prefix = lang.t("Net", "净")
-        return if (v < 0) "$prefix -$" + (-v) + "/h" else "$prefix $" + v + "/h"
+        return town + if (v < 0) "$prefix -$" + (-v) + "/h" else "$prefix $" + v + "/h"
     }
 
     /** EN: "9 dollars, 30 kilometres, below target." ZH: "9块，30公里，不达标。" Unknown: "Offer details incomplete." */
-    fun speech(offer: DeliveryOffer, result: EvaluationResult, lang: Lang = Lang.EN): String {
+    fun speech(offer: DeliveryOffer, result: EvaluationResult, lang: Lang = Lang.EN, outOfTown: String? = null): String {
+        val town = outOfTown?.let { lang.t(" Out of town to $it, watch the empty return.", "跨城单，去$it，注意空驶回程。") } ?: ""
+        return speechCore(offer, result, lang) + town
+    }
+
+    private fun speechCore(offer: DeliveryOffer, result: EvaluationResult, lang: Lang): String {
         if (result.verdict == Verdict.UNKNOWN) return Verdict.UNKNOWN.speech(lang) + lang.t(".", "。")
         val p = offer.estimatedPayout!!.roundToInt()
         val k = offer.distanceKm!!.roundToInt()

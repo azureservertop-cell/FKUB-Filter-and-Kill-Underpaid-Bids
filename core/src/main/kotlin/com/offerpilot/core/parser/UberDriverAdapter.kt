@@ -119,6 +119,14 @@ class UberDriverAdapter(
 
         if (!verified) issues += ParseIssue.ADAPTER_UNVERIFIED
 
+        val dropoffCity = if (!config.readDropoffCity) null else runCatching {
+            val tripIdx = dist.firstOrNull { c -> containsAny(c.node.text.lowercase(), config.totalKeywords) }?.nodeIndex
+                ?: dist.firstOrNull()?.nodeIndex ?: -1
+            val acceptIdx = nodes.indexOfFirst { n -> config.acceptKeywords.any { n.text.trim().equals(it, ignoreCase = true) } }
+
+            DropoffCity.extract(nodes, tripIdx, acceptIdx)
+        }.getOrNull()
+
         val multiStop = if (nodes.any { containsAny(it.text.lowercase(), config.multiStopKeywords) }) true else null
 
         val offer = DeliveryOffer(
@@ -129,6 +137,8 @@ class UberDriverAdapter(
             pickupText = null,       // not read in v1: not reliably extractable and privacy-sensitive
             destinationText = null,  // same as above
             multiStop = multiStop,
+            dropoffCity = dropoffCity, // only the city, for the out-of-town alert
+
             timestamp = screen.timestamp,
             source = screen.source,
             confidence = confidence.coerceIn(0f, 1f),
@@ -221,6 +231,8 @@ data class UberAdapterConfig(
     val durationExcludeKeywords: List<String> = listOf("away", "ago", "expires", "remaining", "left"),
     /** Labels for total distance / time ("total" seen on a real device). */
     val totalKeywords: List<String> = listOf("total", "trip", "总"),
+    /** Read the drop-off city (city only, no street) for the out-of-town alert. */
+    val readDropoffCity: Boolean = true,
     val multiStopKeywords: List<String> = listOf("stops", "multiple", "deliveries", "多点", "多单"),
     /** Whether to add up several leg distances when there's no "total". Off by default: not assumed until verified on a device. */
     val sumLegsWhenNoTotal: Boolean = false,

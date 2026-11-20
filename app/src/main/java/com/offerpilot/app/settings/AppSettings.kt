@@ -78,5 +78,7 @@ data class AppSettings(
     val logUnreadable: Boolean = false,
     /** Keep price / km / minutes of every recognised offer for the Stats tab. */
     val historyEnabled: Boolean = true,
+    /** Your cities for the out-of-town alert, comma or semicolon separated. Blank = the fuel-price city. */
+    val homeCities: String = "",
     val targetPackages: Set<String> = UberAdapterConfig().targetPackages,
 )

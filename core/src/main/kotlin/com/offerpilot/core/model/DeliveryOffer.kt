@@ -19,6 +19,8 @@ data class DeliveryOffer(
     val pickupText: String? = null,
     val destinationText: String? = null,
     val multiStop: Boolean? = null,
+    /** City of the drop-off address only (no street), for the out-of-town alert. In memory only, never stored. */
+    val dropoffCity: String? = null,
     val timestamp: Long,
     val source: OfferSource,
     /** Recognition confidence, 0.0–1.0. */

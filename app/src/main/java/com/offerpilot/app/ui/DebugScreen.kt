@@ -97,8 +97,8 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             SwitchRow(
                 tr("Log unreadable offers", "无法识别时自动保存记录"), s.logUnreadable, { v -> upd { it.copy(logUnreadable = v) } },
                 tr(
-                    "Every time an offer shows \"Unreadable\", saves what was read and why into session-unreadable below (newest 100). Share that zip to get it fixed. Stays on the phone.",
-                    "每次显示“无法识别”时，把读到的文字和原因存到下面的 session-unreadable（保留最近 100 份）。分享这个 zip 就能对症修。只存在手机上。",
+                    "Every time an offer shows \"Unreadable\", saves what was read and why into session-unreadable below (newest 100). Share that zip to get it fixed. Stays on the phone. The saved text can include the pickup and drop-off addresses shown on the card, so turn it off when you don't need it.",
+                    "每次显示“无法识别”时，把读到的文字和原因存到下面的 session-unreadable（保留最近 100 份）。分享这个 zip 就能对症修。只存在手机上。保存的文字可能包含订单卡片上的取餐和送达地址，不需要时请关闭。",
                 ),
             )
             SwitchRow(tr("Include screenshots in snapshots", "快照附带截图"), s.snapshotScreenshot, { v -> upd { it.copy(snapshotScreenshot = v) } }, tr("Off by default. Screenshots help with comparison but take space and may contain customer addresses", "默认关闭。截图能帮助对照，但会占空间，也可能包含顾客地址"))
@@ -122,7 +122,7 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                     }
                 )
             }
-            SwitchRow(tr("Auto snapshot", "自动快照"), s.autoSnapshot, { v -> upd { it.copy(autoSnapshot = v) } })
+            SwitchRow(tr("Auto snapshot", "自动快照"), s.autoSnapshot, { v -> upd { it.copy(autoSnapshot = v) } }, tr("Snapshots can include customer addresses shown on screen. They stay on the phone; delete them after sharing.", "快照可能包含屏幕上的顾客地址。只存在手机上，分享后请删除。"))
         }
 
         Section(tr("Captures", "抓取记录")) {
