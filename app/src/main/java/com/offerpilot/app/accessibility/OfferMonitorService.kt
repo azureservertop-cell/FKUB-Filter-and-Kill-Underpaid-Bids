@@ -60,6 +60,10 @@ class OfferMonitorService : AccessibilityService() {
         private const val RECORD_MIN_INTERVAL_MS = 1000L
         /** Minimum gap between two OCR screenshots (the system also rate-limits takeScreenshot). */
         private const val OCR_MIN_INTERVAL_MS = 800L
+        /** Wait after a scroll before reading the list again. */
+        private const val LIST_SETTLE_MS = 300L
+        /** How often an offer list on screen is re-read so badges stay in place. */
+        private const val LIST_REFRESH_MS = 1_000L
         private const val OPAQUE_MAX_MISSES = 3
         /** OCR interval for an Uber window that has repeatedly shown no offer. */
         private const val OCR_IDLE_INTERVAL_MS = 5_000L
@@ -87,7 +91,10 @@ class OfferMonitorService : AccessibilityService() {
 
     // Worker thread only
     private var adapter = UberDriverAdapter()
-    private var pipeline = OfferPipeline(adapter, OfferEvaluator())
+    private var evaluator = OfferEvaluator()
+    private var pipeline = OfferPipeline(adapter, evaluator)
+    /** When the target app last scrolled; list badges read before this are stale. */
+    @Volatile private var lastScrollAt = 0L
     private var readScheduled = false
     private var lastAutoSnapshotKey: String? = null
     private var buttonCallback: AccessibilityButtonController.AccessibilityButtonCallback? = null
@@ -138,7 +145,8 @@ class OfferMonitorService : AccessibilityService() {
 
     private fun rebuildPipeline(s: AppSettings) {
         adapter = UberDriverAdapter(UberAdapterConfig(targetPackages = s.targetPackages))
-        pipeline = OfferPipeline(adapter, OfferEvaluator(s.evaluator), OfferTracker())
+        evaluator = OfferEvaluator(s.evaluator)
+        pipeline = OfferPipeline(adapter, evaluator, OfferTracker())
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -146,6 +154,14 @@ class OfferMonitorService : AccessibilityService() {
         if (settings.targetPackages.isEmpty() || !settings.consentAccepted) return // no app picked or no consent yet: read nothing
         if (!::workHandler.isInitialized) return
         // Events from other apps are only used to notice that the user left Uber; their content is never read.
+        if (event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+            if (event.packageName?.toString() !in settings.targetPackages) return
+            // The list is moving: drop the per-card badges now and read again once it settles.
+            lastScrollAt = SystemClock.elapsedRealtime()
+            if (::overlay.isInitialized) overlay.hideCards()
+            scheduleRead(LIST_SETTLE_MS)
+            return
+        }
         val relevant = when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOWS_CHANGED -> true
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> event.packageName?.toString() in settings.targetPackages
@@ -178,16 +194,18 @@ class OfferMonitorService : AccessibilityService() {
 
             if (read == null) {
                 frameGeneration++
+                overlay.hideCards()
                 handle(pipeline.processResult(AdapterResult.NoOffer, now), s, now)
                 return
             }
             val adapted = adapter.extract(read.screen)
-            val nodeOfferComplete = adapted is AdapterResult.Offer && adapted.complete
+            val nodeOfferComplete = (adapted is AdapterResult.Offer && adapted.complete) ||
+                (adapted is AdapterResult.OfferList && adapted.cards.any { it.complete })
             val region = if (!nodeOfferComplete && s.ocrEnabled) hiddenOfferRegion(read) else null
             if (region == null) {
                 frameGeneration++
                 MonitorState.update { it.copy(lastAdapterNote = adapter.lastDebug?.note) }
-                handle(pipeline.processResult(adapted, now), s, now)
+                dispatch(adapted, s, now)
             } else {
                 // Nodes are hidden: don't feed an "empty" frame to the tracker (it would think the offer vanished); use OCR instead.
                 requestOcr(region, read.screen.packageName)
@@ -256,7 +274,7 @@ class OfferMonitorService : AccessibilityService() {
             var found = false
             try {
                 if (screen != null) {
-                    found = adapter.extract(screen) is AdapterResult.Offer
+                    found = adapter.extract(screen).let { it is AdapterResult.Offer || it is AdapterResult.OfferList }
                     if (found) opaqueMisses.remove(window.id) else opaqueMisses[window.id] = (opaqueMisses[window.id] ?: 0) + 1
                     if (opaqueMisses.size > 50) opaqueMisses.clear()
                 }
@@ -267,7 +285,9 @@ class OfferMonitorService : AccessibilityService() {
                     val adapted = adapter.extract(screen)
                     MonitorState.update { it.copy(lastAdapterNote = "OCR: " + (adapter.lastDebug?.note ?: "")) }
                     val now = System.currentTimeMillis()
-                    handle(pipeline.processResult(adapted, now), s, now)
+                    // The list scrolled while this screenshot was being read: positions are stale, read again instead
+                    if (adapted is AdapterResult.OfferList && lastScrollAt > started) scheduleRead(LIST_SETTLE_MS)
+                    else dispatch(adapted, s, now)
                     Log.d(TAG, "ocr frame in ${SystemClock.elapsedRealtime() - started}ms, ${screen.nodes.size} lines")
                 }
             } catch (t: Throwable) {
@@ -277,6 +297,50 @@ class OfferMonitorService : AccessibilityService() {
             // After a few passes without an offer (e.g. a non-offer screen), stop polling and wait for the next window event.
             if (found || (opaqueMisses[window.id] ?: 0) < OPAQUE_MAX_MISSES) scheduleRead(OCR_MIN_INTERVAL_MS)
         }
+    }
+
+    /** Offer lists get per-card badges; everything else goes through the popup tracker. */
+    private fun dispatch(adapted: AdapterResult, s: AppSettings, now: Long) {
+        if (adapted is AdapterResult.OfferList) {
+            handle(pipeline.processResult(AdapterResult.NoOffer, now), s, now) // no popup on screen
+            showList(adapted, s)
+        } else {
+            overlay.hideCards()
+            handle(pipeline.processResult(adapted, now), s, now)
+        }
+    }
+
+    private val listHistoryKeys = LinkedHashSet<String>()
+
+    /**
+     * Trip Radar: the driver is browsing several offers, so there is no sound, speech or glow; each complete card gets
+     * a small badge with its estimated net hourly next to its price.
+     */
+    private fun showList(list: AdapterResult.OfferList, s: AppSettings) {
+        val badges = list.cards.filter { it.complete }.mapNotNull { c ->
+            val r = evaluator.evaluate(c.offer, System.currentTimeMillis())
+            if (!r.isConclusive) return@mapNotNull null
+            val town = if (!s.evaluator.outOfTownAlert) null
+            else com.offerpilot.core.parser.DropoffCity.outOfTown(c.offer.dropoffCity, s.homeCities.ifBlank { s.fuel.region })
+            recordListHistory(c.offer, s)
+            OverlayController.CardBadge(OfferMessages.overlay(c.offer, r, s.language, town), r.verdict, c.anchor.top, c.anchor.bottom)
+        }
+        if (s.overlayEnabled && badges.isNotEmpty()) overlay.showCards(badges) else overlay.hideCards()
+        MonitorState.update { it.copy(lastAdapterNote = adapter.lastDebug?.note) }
+        // Keep reading while the list is on screen so badges stay in place and new cards get one.
+        scheduleRead(LIST_REFRESH_MS)
+    }
+
+    private fun recordListHistory(o: com.offerpilot.core.model.DeliveryOffer, s: AppSettings) {
+        if (!s.historyEnabled || o.source == com.offerpilot.core.model.OfferSource.MOCK) return
+        val price = o.estimatedPayout ?: return
+        val km = o.distanceKm ?: return
+        val min = o.durationMinutes ?: return
+        val key = "$price/$km/$min"
+        if (!listHistoryKeys.add(key)) return
+        if (listHistoryKeys.size > 100) listHistoryKeys.remove(listHistoryKeys.first())
+        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min)
+        workHandler.post { runCatching { com.offerpilot.app.history.OfferHistory.append(this, rec) } }
     }
 
     private fun handle(output: PipelineOutput, s: AppSettings, now: Long) {
@@ -386,6 +450,7 @@ class OfferMonitorService : AccessibilityService() {
     private fun clearOutputs() {
         if (!::overlay.isInitialized) return
         overlay.hide()
+        overlay.hideCards()
         pendingSpeech?.let { mainHandler.removeCallbacks(it) }
         pendingSpeech = null
         speaker.stop()

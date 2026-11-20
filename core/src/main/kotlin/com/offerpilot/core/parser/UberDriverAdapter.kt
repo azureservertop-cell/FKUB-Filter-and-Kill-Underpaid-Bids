@@ -37,6 +37,39 @@ class UberDriverAdapter(
             lastDebug = AdapterDebug(note = "not a target app: ${screen.packageName}")
             return AdapterResult.NoOffer
         }
+        listCards(screen)?.let { return it }
+        return extractSingle(screen)
+    }
+
+    /**
+     * Trip Radar (real device, 2026-11-20): a scrolling list of cards, each "Delivery (2)" / "CA$11.56" /
+     * "including estimated tip" / "29 min (8.4 km) total" / pickup / drop-off / "Match". Detected by the list title or by
+     * two or more "estimated tip" labels. Each card spans from just above its price to the next card; cards cut off at
+     * the screen edge come out incomplete and get no badge. Needs screen positions; without them, null.
+     */
+    private fun listCards(screen: ScreenText): AdapterResult? {
+        if (!config.splitOfferLists) return null
+        val nodes = screen.nodes.filter { it.text.isNotBlank() }
+        if (nodes.isEmpty() || nodes.any { it.bounds == null }) return null
+        val markers = nodes.filter { n -> containsAny(n.text.lowercase(), config.offerMarkerKeywords) }.sortedBy { it.bounds!!.top }
+        val titled = nodes.any { n -> config.offerListKeywords.any { n.text.trim().equals(it, ignoreCase = true) } }
+        if (markers.size < 2 && !(titled && markers.isNotEmpty())) return null
+        val starts = markers.map { m -> m.bounds!!.top - 3 * m.bounds.height }
+        val cards = markers.mapIndexed { i, m ->
+            val start = starts[i]
+            val end = starts.getOrElse(i + 1) { Int.MAX_VALUE }
+            val part = nodes.filter { n -> val cy = (n.bounds!!.top + n.bounds.bottom) / 2; cy in start until end }
+            val r = extractSingle(screen.copy(nodes = part))
+            val offer = (r as? AdapterResult.Offer) ?: return@mapIndexed null
+            // Price line: the tallest text above the marker in this card
+            val price = part.filter { it.bounds!!.bottom <= m.bounds!!.top + 4 }.maxByOrNull { it.bounds!!.height } ?: m
+            AdapterResult.Card(offer.offer.copy(issues = offer.offer.issues - ParseIssue.MULTIPLE_OFFERS), offer.complete, price.bounds!!)
+        }.filterNotNull()
+        lastDebug = AdapterDebug(note = "offer list: ${cards.size} cards (${cards.count { it.complete }} complete)")
+        return if (cards.isEmpty()) AdapterResult.NoOffer else AdapterResult.OfferList(cards)
+    }
+
+    private fun extractSingle(screen: ScreenText): AdapterResult {
         var repairedPrice = false
         val nodes = screen.nodes.filter { it.text.isNotBlank() }.map { n ->
             if (screen.source != com.offerpilot.core.model.OfferSource.OCR) return@map n
@@ -218,6 +251,10 @@ data class UberAdapterConfig(
     val acceptKeywords: List<String> = listOf("Accept", "Match", "Tap to accept", "接受", "接单"),
     /** Text that only appears on an offer card (seen on a real device). Used with [acceptKeywords] to tell offers from history screens. */
     val offerMarkerKeywords: List<String> = listOf("including estimated tip", "estimated tip"),
+    /** Title of a screen that lists several offers at once ("Trip Radar" seen on a real device). */
+    val offerListKeywords: List<String> = listOf("Trip Radar"),
+    /** Judge each card of an offer list separately (needs screen positions). */
+    val splitOfferLists: Boolean = true,
     /** Require an Accept button or an offer marker before treating money + distance + time as an offer. */
     val requireOfferMarker: Boolean = true,
     /** Pending: labels that may appear next to the price. */

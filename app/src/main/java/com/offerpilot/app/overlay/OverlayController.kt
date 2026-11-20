@@ -86,6 +86,61 @@ class OverlayController(private val service: AccessibilityService) {
         layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
     }
 
+    /** One badge per offer card in a list (Trip Radar): its text, colour and the card's price line on screen. */
+    data class CardBadge(val text: String, val verdict: Verdict, val top: Int, val bottom: Int)
+
+    private val cardViews = mutableListOf<TextView>()
+
+    /**
+     * Shows a small badge at the right edge of each card's price line. Called again after every read, so the badges
+     * follow the list as it scrolls; [hideCards] removes them while the list is moving.
+     */
+    fun showCards(badges: List<CardBadge>) {
+        main.post {
+            val dp = { v: Float -> TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, service.resources.displayMetrics) }
+            while (cardViews.size > badges.size) cardViews.removeAt(cardViews.lastIndex).let { runCatching { wm.removeView(it) } }
+            badges.forEachIndexed { i, b ->
+                val tv = cardViews.getOrNull(i) ?: createView().also { v ->
+                    v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                    v.setPadding(dp(12f).toInt(), dp(6f).toInt(), dp(12f).toInt(), dp(6f).toInt())
+                    v.maxLines = 1
+                    runCatching { wm.addView(v, cardParams(0)) }.onFailure { return@post }
+                    cardViews += v
+                }
+                tv.text = b.text
+                (tv.background as GradientDrawable).setColor(colorFor(b.verdict))
+                tv.setTextColor(if (b.verdict == Verdict.MIN_WAGE) Color.BLACK else Color.WHITE)
+                val badgeH = dp(34f).toInt()
+                val y = (b.top + b.bottom) / 2 - badgeH / 2
+                runCatching { wm.updateViewLayout(tv, cardParams(y)) }
+            }
+        }
+    }
+
+    fun hideCards() {
+        main.post {
+            cardViews.forEach { runCatching { wm.removeView(it) } }
+            cardViews.clear()
+        }
+    }
+
+    private fun cardParams(y: Int) = WindowManager.LayoutParams(
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        PixelFormat.TRANSLUCENT,
+    ).apply {
+        // Screen coordinates, so the badge lines up with the card text read from the screen
+        layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        gravity = Gravity.TOP or Gravity.END
+        x = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 28f, service.resources.displayMetrics).toInt()
+        this.y = y
+    }
+
     private var badge: TextView? = null
 
     /** Small badge in the top-left corner during continuous capture (not touchable). */

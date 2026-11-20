@@ -20,6 +20,7 @@ object DropoffCity {
         "on", "ontario", "qc", "quebec", "bc", "ab", "alberta", "mb", "manitoba", "sk", "saskatchewan",
         "ns", "nb", "nl", "pe", "pei", "yt", "nt", "nu", "canada",
     )
+    private val PARENS = Regex("""\([^)]*\)?""")
     private val POSTAL = Regex("""\b[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d\b""")
 
     /**
@@ -35,7 +36,7 @@ object DropoffCity {
         val accept = nodes.getOrNull(acceptIndex)
         val tb = trip.bounds
         val selected = if (tb != null && nodes.all { it.bounds != null }) {
-            val bottomLimit = accept?.bounds?.top ?: Int.MAX_VALUE
+            val bottomLimit = accept?.bounds?.top ?: (Int.MAX_VALUE - 10)
             nodes.filter { n -> n.bounds!!.top >= tb.bottom - 5 && n.bounds!!.bottom <= bottomLimit + 5 && n !== trip && n !== accept }
                 .sortedWith(compareBy({ it.bounds!!.top }, { it.bounds!!.left }))
         } else {
@@ -53,7 +54,9 @@ object DropoffCity {
             if (!cur.endsWith(",") && !open) { blocks += cur; cur = "" }
         }
         if (cur.isNotEmpty()) blocks += cur
-        return cityOf(blocks.last())
+        // The drop-off is the last stop that looks like "street, city". Lines such as "Customer verification" below it
+        // have no comma and are skipped; pickup addresses in parentheses ("Culture Crust (London)") are ignored.
+        return blocks.asReversed().firstNotNullOfOrNull { cityOf(it.replace(PARENS, " ")) }
     }
 
     /** "Sunset Rd, St Thomas" → "St Thomas"; "12 King St, London, ON N6A 1A1" → "London"; "Whitney St" → null. */

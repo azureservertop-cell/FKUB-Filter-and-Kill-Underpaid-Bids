@@ -84,6 +84,11 @@ fun MockOfferScreen(s: AppSettings, modifier: Modifier) {
                 result = r.offer to OfferEvaluator(s.evaluator).evaluate(r.offer)
                 adapterNote = lang.t("Adapter: ", "适配器：") + "${adapter.lastDebug?.note}"
             }
+            is AdapterResult.OfferList -> {
+                val first = r.cards.first().offer
+                result = first to OfferEvaluator(s.evaluator).evaluate(first)
+                adapterNote = lang.t("Adapter: offer list, showing the first card. ", "适配器：订单列表，显示第一张。") + "${adapter.lastDebug?.note}"
+            }
         }
     }
 

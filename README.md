@@ -46,7 +46,9 @@ Phase 0 on a real device (Android 15) showed that **while an offer popup is up, 
 3. runs ML Kit text recognition **on the device**; the bitmap is recycled right away and never saved;
 4. parses lines like `CA$5.50` / `including estimated tip` / `15 min (1.3 km) total` / `Accept`, repairing common OCR misreads (e.g. `CA$678` → `CA$6.78`).
 
-This works with Uber in the foreground and when Uber pops an offer over another app (maps, launcher, …). FKUB does not try to get around Uber hiding its UI.
+This works with Uber in the foreground and when Uber pops an offer over another app (maps, launcher, …). The button may say **Accept** or **Match**.
+
+**Trip Radar.** On Uber's Trip Radar list, where several offers are stacked, each card is judged on its own and gets a small coloured badge with its estimated net hourly next to its price. The badges disappear while you scroll and come back at the new positions once the list stops (about a second with OCR). There is no sound, speech or glow on the list, since you are browsing rather than receiving an offer. FKUB does not try to get around Uber hiding its UI.
 
 ## Rules (default)
 
@@ -149,7 +151,7 @@ CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishe
 
 ## Tests
 
-`core/src/test` has 89 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
+`core/src/test` has 93 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
 
 Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 

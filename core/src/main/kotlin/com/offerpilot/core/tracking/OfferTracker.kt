@@ -26,7 +26,8 @@ class OfferTracker(
     fun onFrame(result: AdapterResult, now: Long): TrackerEvent {
         prune(now)
         when (result) {
-            is AdapterResult.NoOffer -> {
+            // An offer list (Trip Radar) is not a popup offer: the popup tracker treats it as "no popup".
+            is AdapterResult.NoOffer, is AdapterResult.OfferList -> {
                 incompleteSince = null
                 val prev = current ?: return TrackerEvent.Idle
                 current = null
