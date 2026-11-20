@@ -94,6 +94,13 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(tr("Stop capture", "结束抓取")) }
             }
+            SwitchRow(
+                tr("Log unreadable offers", "无法识别时自动保存记录"), s.logUnreadable, { v -> upd { it.copy(logUnreadable = v) } },
+                tr(
+                    "Every time an offer shows \"Unreadable\", saves what was read and why into session-unreadable below (newest 100). Share that zip to get it fixed. Stays on the phone.",
+                    "每次显示“无法识别”时，把读到的文字和原因存到下面的 session-unreadable（保留最近 100 份）。分享这个 zip 就能对症修。只存在手机上。",
+                ),
+            )
             SwitchRow(tr("Include screenshots in snapshots", "快照附带截图"), s.snapshotScreenshot, { v -> upd { it.copy(snapshotScreenshot = v) } }, tr("Off by default. Screenshots help with comparison but take space and may contain customer addresses", "默认关闭。截图能帮助对照，但会占空间，也可能包含顾客地址"))
         }
 
@@ -128,7 +135,8 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                     if (!recordingThis) {
                         Row {
                             TextButton(onClick = {
-                                val zip = File(dir, d.name + ".zip").takeIf { it.exists() } ?: SnapshotStore.zipSession(d)
+                                val newest = d.listFiles()?.maxOfOrNull { it.lastModified() } ?: 0L
+                                val zip = File(dir, d.name + ".zip").takeIf { it.exists() && it.lastModified() >= newest } ?: SnapshotStore.zipSession(d)
                                 share(ctx, zip)
                             }) { Text(tr("Share zip", "分享 zip")) }
                             TextButton(onClick = { d.listFiles()?.filter { it.extension == "json" }?.maxByOrNull { it.name }?.let { preview = summarize(it) } }) { Text(tr("View latest", "看最后一份")) }

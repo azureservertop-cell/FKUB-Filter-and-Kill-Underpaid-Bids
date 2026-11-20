@@ -74,5 +74,7 @@ data class AppSettings(
     val autoSnapshot: Boolean = false,
     /** Whether snapshots include a screenshot. Off by default (PRD 10.4: screenshots are not persisted by default). */
     val snapshotScreenshot: Boolean = false,
+    /** Save a log entry (read text, OCR lines, why it failed) every time an offer is shown as "Unreadable". */
+    val logUnreadable: Boolean = true,
     val targetPackages: Set<String> = UberAdapterConfig().targetPackages,
 )

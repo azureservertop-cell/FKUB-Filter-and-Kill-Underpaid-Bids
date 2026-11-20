@@ -32,6 +32,7 @@ class SnapshotStore(private val service: AccessibilityService) {
         adapterDebug: AdapterDebug?,
         into: File = dir,
         ocrLines: List<String>? = null,
+        evaluation: JSONObject? = null,
     ): File? {
         val json = JSONObject()
         json.put("app", "OfferPilot")
@@ -50,6 +51,7 @@ class SnapshotStore(private val service: AccessibilityService) {
             })
         }
         ocrLines?.let { json.put("ocrLines", JSONArray(it)) }
+        evaluation?.let { json.put("evaluation", it) }
         val windows = JSONArray()
         var hasTarget = false
         for (w in runCatching { service.windows }.getOrNull().orEmpty()) {
@@ -84,12 +86,24 @@ class SnapshotStore(private val service: AccessibilityService) {
         return png
     }
 
+    /** Log of offers that couldn't be judged ("Unreadable"), kept to the newest [UNREADABLE_MAX] entries. */
+    val unreadableDir: File get() = File(dir, UNREADABLE_DIR).apply { mkdirs() }
+
+    fun trimUnreadable() {
+        val files = unreadableDir.listFiles()?.sortedByDescending { it.name }.orEmpty()
+        val keepNames = files.filter { it.extension == "json" }.take(UNREADABLE_MAX).map { it.nameWithoutExtension }.toSet()
+        files.filter { it.nameWithoutExtension !in keepNames }.forEach { it.delete() }
+    }
+
     fun newSessionDir(): File =
         File(dir, "session-" + SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())).apply { mkdirs() }
 
     fun list(): List<File> = dir.listFiles()?.filter { it.extension == "json" }?.sortedByDescending { it.lastModified() }.orEmpty()
 
     companion object {
+        const val UNREADABLE_DIR = "session-unreadable"
+        const val UNREADABLE_MAX = 100
+
         /** Packs a session directory into a zip of the same name (under snapshots/) for one-tap sharing. */
         fun zipSession(sessionDir: File): File {
             val zip = File(sessionDir.parentFile, sessionDir.name + ".zip")

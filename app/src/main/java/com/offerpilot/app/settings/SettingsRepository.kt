@@ -46,6 +46,7 @@ class SettingsRepository(private val context: Context) {
         val debug = booleanPreferencesKey("debug_mode")
         val autoSnap = booleanPreferencesKey("auto_snapshot")
         val snapShot = booleanPreferencesKey("snapshot_screenshot")
+        val logUnreadable = booleanPreferencesKey("log_unreadable")
         val targets = stringPreferencesKey("target_packages")
         val language = stringPreferencesKey("language")
         val fuelMode = stringPreferencesKey("fuel_mode")
@@ -112,6 +113,7 @@ class SettingsRepository(private val context: Context) {
             debugMode = this[K.debug] ?: d.debugMode,
             autoSnapshot = this[K.autoSnap] ?: d.autoSnapshot,
             snapshotScreenshot = this[K.snapShot] ?: d.snapshotScreenshot,
+            logUnreadable = this[K.logUnreadable] ?: d.logUnreadable,
             targetPackages = this[K.targets]?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
                 ?.ifEmpty { null } ?: d.targetPackages,
         )
@@ -151,6 +153,7 @@ class SettingsRepository(private val context: Context) {
             p[K.debug] = n.debugMode
             p[K.autoSnap] = n.autoSnapshot
             p[K.snapShot] = n.snapshotScreenshot
+            p[K.logUnreadable] = n.logUnreadable
             p[K.targets] = n.targetPackages.joinToString(",")
             p[K.language] = n.language.name
             p[K.fuelMode] = n.fuel.mode.name

@@ -274,7 +274,41 @@ class OfferMonitorService : AccessibilityService() {
         }
     }
 
+    private var lastUnreadableLogAt = 0L
+
+    /** Saves what was read and why it couldn't be judged, so "Unreadable" offers can be diagnosed later. Local only. */
+    private fun logUnreadable(out: PipelineOutput.Show, s: AppSettings) {
+        val now = System.currentTimeMillis()
+        if (now - lastUnreadableLogAt < 3_000) return
+        lastUnreadableLogAt = now
+        val ocrLines = recentOcrLines()
+        val adapterDebug = adapter.lastDebug
+        workHandler.post {
+            try {
+                val o = out.offer
+                val eval = org.json.JSONObject().apply {
+                    put("source", o.source.name)
+                    put("payout", o.estimatedPayout ?: org.json.JSONObject.NULL)
+                    put("distanceKm", o.distanceKm ?: org.json.JSONObject.NULL)
+                    put("durationMin", o.durationMinutes ?: org.json.JSONObject.NULL)
+                    put("confidence", o.confidence.toDouble())
+                    put("issues", org.json.JSONArray(o.issues.map { it.name }))
+                    put("unknownReasons", org.json.JSONArray(out.result.unknownReasons.map { it.name }))
+                    put("detail", OfferMessages.detail(o, out.result, com.offerpilot.core.i18n.Lang.EN))
+                    put("appVersion", runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "")
+                }
+                val file = snapshots.capture(s.targetPackages, "unreadable", adapterDebug, into = snapshots.unreadableDir, ocrLines = ocrLines, evaluation = eval)
+                if (file != null && s.snapshotScreenshot) captureScreenshot(file)
+                snapshots.trimUnreadable()
+                MonitorState.update { it.copy(lastSnapshotPath = file?.absolutePath) }
+            } catch (t: Throwable) {
+                Log.w(TAG, "unreadable log failed", t)
+            }
+        }
+    }
+
     private fun present(out: PipelineOutput.Show, s: AppSettings) {
+        if (!out.result.isConclusive && s.logUnreadable && out.offer.source != com.offerpilot.core.model.OfferSource.MOCK) logUnreadable(out, s)
         val overlayText = OfferMessages.overlay(out.offer, out.result, s.language)
         MonitorState.update {
             it.copy(
