@@ -94,7 +94,7 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 
 - **Status**: language, service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
-- **Stats**: a log of every offer FKUB read (time, shown price, km and minutes only), re-judged with your current rules: tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
+- **Stats**: a log of every offer FKUB read (time, shown price, km and minutes only), re-judged with your current rules: this week's share of offers below your own standard (vs last week), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
 - **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
 - **Debug**: target package, continuous capture (one tap to start, one to stop, zipped for sharing), single snapshots, capture list.
 

@@ -110,6 +110,8 @@ fun StatsScreen(settings: AppSettings, repo: SettingsRepository, modifier: Modif
             }
         }
 
+        WeeklySummary(all, settings)
+
         if (stats.total == 0) {
             Text(
                 tr("No offers logged in this range yet. Go online in Uber Driver and they will show up here.",
@@ -145,13 +147,62 @@ fun StatsScreen(settings: AppSettings, repo: SettingsRepository, modifier: Modif
     }
 }
 
+/**
+ * This week vs last week: share of offers below the driver's own standard (ratio < 1 with their own settings).
+ * Computed only from the local log, shown only here. Weeks start on Monday.
+ */
+@Composable
+private fun WeeklySummary(all: List<OfferRecord>, settings: AppSettings) {
+    val weeks = remember(all, settings.evaluator) {
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+            // Days since Monday: Mon=0 … Sun=6
+            add(Calendar.DAY_OF_YEAR, -((get(Calendar.DAY_OF_WEEK) + 5) % 7))
+        }
+        val thisStart = cal.timeInMillis
+        cal.add(Calendar.WEEK_OF_YEAR, -1)
+        val lastStart = cal.timeInMillis
+        fun share(rs: List<OfferRecord>): Pair<Int, Int> {
+            val s = OfferStats.compute(rs, settings.evaluator) { 0 }
+            return (s.countByVerdict[Verdict.LOSS] ?: 0) to s.total
+        }
+        share(all.filter { it.timeMs >= thisStart }) to share(all.filter { it.timeMs in lastStart until thisStart })
+    }
+    val (thisWeek, lastWeek) = weeks
+    Section(tr("This week", "本周")) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (thisWeek.second == 0) {
+                Text(tr("No offers logged this week yet.", "本周还没有记录。"), style = MaterialTheme.typography.bodyMedium)
+            } else {
+                val pct = thisWeek.first * 100 / thisWeek.second
+                Text(
+                    tr("$pct% of this week's offers were below your own standard (${thisWeek.first} of ${thisWeek.second}).",
+                        "本周 $pct% 的订单低于你自己设定的标准（${thisWeek.second} 单中有 ${thisWeek.first} 单）。"),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = if (pct >= 50) verdictColor(Verdict.LOSS) else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+            if (lastWeek.second > 0) {
+                val lp = lastWeek.first * 100 / lastWeek.second
+                Text(tr("Last week: $lp% (${lastWeek.first} of ${lastWeek.second}).", "上周：$lp%（${lastWeek.second} 单中有 ${lastWeek.first} 单）。"),
+                    style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(
+                tr("“Below your own standard” means below the target pay and vehicle costs you set on the Rules tab. FKUB only does the arithmetic; this stays on your phone.",
+                    "“低于你自己设定的标准”是指低于你在「规则」页填的目标时薪和车辆成本。FKUB 只负责计算，结果只在你的手机上。"),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
 @Composable
 private fun Summary(s: OfferStatsSummary) {
     val bad = s.countByVerdict[Verdict.LOSS] ?: 0
     val pct = if (s.total > 0) bad * 100 / s.total else 0
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            tr("${s.total} offers · $pct% below target", "${s.total} 单 · $pct% 不达标"),
+            tr("${s.total} offers · $pct% below your standard", "${s.total} 单 · $pct% 低于你的标准"),
             style = MaterialTheme.typography.titleMedium,
         )
         Text(
