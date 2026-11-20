@@ -61,6 +61,8 @@ class OfferMonitorService : AccessibilityService() {
         /** Minimum gap between two OCR screenshots (the system also rate-limits takeScreenshot). */
         private const val OCR_MIN_INTERVAL_MS = 800L
         private const val OPAQUE_MAX_MISSES = 3
+        /** OCR interval for an Uber window that has repeatedly shown no offer. */
+        private const val OCR_IDLE_INTERVAL_MS = 5_000L
         const val RECORD_MAX_COUNT = 1000
 
         private var instanceRef = WeakReference<OfferMonitorService>(null)
@@ -206,9 +208,9 @@ class OfferMonitorService : AccessibilityService() {
         val bigOverlay = read.windows.firstOrNull {
             !it.isApplication && it.bounds.width() >= dm.widthPixels / 2 && it.bounds.height() >= dm.heightPixels / 6
         }
-        if (bigOverlay != null) return bigOverlay
+        if (bigOverlay != null) return bigOverlay.takeIf { ocrAllowed(it.id) }
         val app = read.windows.firstOrNull { it.isApplication }
-        if (app != null && read.screen.nodes.isEmpty()) return app
+        if (app != null && read.screen.nodes.isEmpty()) return app.takeIf { ocrAllowed(it.id) }
         // While Uber is online (an Uber window such as the floating bubble exists), a large unreadable window is most likely the offer card shown over another app.
         // If several OCR passes on the same window find no offer, stop capturing it so other apps' overlays aren't OCR'd repeatedly.
         return read.opaqueWindows.firstOrNull { (opaqueMisses[it.id] ?: 0) < OPAQUE_MAX_MISSES }
@@ -216,6 +218,16 @@ class OfferMonitorService : AccessibilityService() {
 
     /** Unreadable window id → number of consecutive OCR passes that found no offer. */
     private val opaqueMisses = HashMap<Int, Int>()
+    /** Window id → when it was last OCR'd. */
+    private val lastOcrAtFor = HashMap<Int, Long>()
+
+    /**
+     * After [OPAQUE_MAX_MISSES] OCR passes on the same Uber window found no offer (e.g. a screen that hides its text but isn't
+     * an offer), OCR that window at most every [OCR_IDLE_INTERVAL_MS] instead of every [OCR_MIN_INTERVAL_MS].
+     */
+    private fun ocrAllowed(windowId: Int): Boolean =
+        (opaqueMisses[windowId] ?: 0) < OPAQUE_MAX_MISSES ||
+            SystemClock.elapsedRealtime() - (lastOcrAtFor[windowId] ?: 0L) >= OCR_IDLE_INTERVAL_MS
 
     // ---------------- OCR ----------------
 
@@ -232,14 +244,17 @@ class OfferMonitorService : AccessibilityService() {
         if (wait > 0) { scheduleRead(wait); return }
         ocrInFlight = true
         lastOcrAt = SystemClock.elapsedRealtime()
+        lastOcrAtFor[window.id] = lastOcrAt
+        if (lastOcrAtFor.size > 50) lastOcrAtFor.clear()
         val gen = frameGeneration
         val started = SystemClock.elapsedRealtime()
         ocr.recognize(window.bounds, window.id, pkg) { screen ->
             ocrInFlight = false
             val s = settings
+            var found = false
             try {
                 if (screen != null) {
-                    val found = adapter.extract(screen) is AdapterResult.Offer
+                    found = adapter.extract(screen) is AdapterResult.Offer
                     if (found) opaqueMisses.remove(window.id) else opaqueMisses[window.id] = (opaqueMisses[window.id] ?: 0) + 1
                     if (opaqueMisses.size > 50) opaqueMisses.clear()
                 }
@@ -256,8 +271,9 @@ class OfferMonitorService : AccessibilityService() {
             } catch (t: Throwable) {
                 Log.w(TAG, "ocr handling failed", t)
             }
-            // Uber doesn't always emit events while the popup is up: look again so we notice it closing or changing
-            scheduleRead(OCR_MIN_INTERVAL_MS)
+            // Uber doesn't always emit events while the popup is up: look again so we notice it closing or changing.
+            // After a few passes without an offer (e.g. a non-offer screen), stop polling and wait for the next window event.
+            if (found || (opaqueMisses[window.id] ?: 0) < OPAQUE_MAX_MISSES) scheduleRead(OCR_MIN_INTERVAL_MS)
         }
     }
 
@@ -272,6 +288,22 @@ class OfferMonitorService : AccessibilityService() {
             is PipelineOutput.RecheckLater -> scheduleRead(output.delayMs)
             PipelineOutput.None -> Unit
         }
+    }
+
+    private var lastHistoryKey: String? = null
+
+    /** Stats tab history: one record per announced, judged offer (numbers only). */
+    private fun recordHistory(out: PipelineOutput.Show, s: AppSettings) {
+        val o = out.offer
+        if (!s.historyEnabled || !out.announce || !out.result.isConclusive || o.source == com.offerpilot.core.model.OfferSource.MOCK) return
+        val price = o.estimatedPayout ?: return
+        val km = o.distanceKm ?: return
+        val min = o.durationMinutes ?: return
+        val key = "$price/$km/$min"
+        if (key == lastHistoryKey) return
+        lastHistoryKey = key
+        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min)
+        workHandler.post { runCatching { com.offerpilot.app.history.OfferHistory.append(this, rec) } }
     }
 
     private var lastUnreadableLogAt = 0L
@@ -309,6 +341,7 @@ class OfferMonitorService : AccessibilityService() {
 
     private fun present(out: PipelineOutput.Show, s: AppSettings) {
         if (!out.result.isConclusive && s.logUnreadable && out.offer.source != com.offerpilot.core.model.OfferSource.MOCK) logUnreadable(out, s)
+        recordHistory(out, s)
         val overlayText = OfferMessages.overlay(out.offer, out.result, s.language)
         MonitorState.update {
             it.copy(

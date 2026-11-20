@@ -64,8 +64,12 @@ class UberDriverAdapter(
         val hasAccept = acceptNodes.isNotEmpty()
         val allThree = money.isNotEmpty() && dist.isNotEmpty() && dur.isNotEmpty()
 
-        // Is there an offer popup: all three values present, or an "Accept" button plus at least one value.
-        val offerPresent = allThree || (hasAccept && (money.isNotEmpty() || dist.isNotEmpty() || dur.isNotEmpty()))
+        // Is there an offer popup? Real offer cards always carry an "Accept" button and an "including estimated tip"
+        // label. Screens such as trip history also show money + km + min, so the numbers alone are not enough.
+        val hasMarker = nodes.any { n -> containsAny(n.text.lowercase(), config.offerMarkerKeywords) }
+        val anyValue = money.isNotEmpty() || dist.isNotEmpty() || dur.isNotEmpty()
+        val offerPresent = if (config.requireOfferMarker) (hasAccept || hasMarker) && anyValue
+        else allThree || (hasAccept && anyValue)
         if (!offerPresent) {
             lastDebug = AdapterDebug(
                 note = "no offer popup detected",
@@ -202,6 +206,10 @@ data class UberAdapterConfig(
     val targetPackages: Set<String> = setOf("com.ubercab.driver"),
     /** Accept button text ("Accept" seen on a real device; others pending). Only raises confidence / detects multiple offers, never tapped. */
     val acceptKeywords: List<String> = listOf("Accept", "Match", "Tap to accept", "接受", "接单"),
+    /** Text that only appears on an offer card (seen on a real device). Used with [acceptKeywords] to tell offers from history screens. */
+    val offerMarkerKeywords: List<String> = listOf("including estimated tip", "estimated tip"),
+    /** Require an Accept button or an offer marker before treating money + distance + time as an offer. */
+    val requireOfferMarker: Boolean = true,
     /** Pending: labels that may appear next to the price. */
     val payoutLabelKeywords: List<String> = listOf("est.", "estimated", "total", "earn", "预估", "总计"),
     /** Amounts in text containing these are not the offer price (boosts, tip notes, earnings totals, ...). Partly pending. */

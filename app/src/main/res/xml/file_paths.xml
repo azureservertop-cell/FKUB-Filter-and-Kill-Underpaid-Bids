@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <external-files-path name="snapshots" path="snapshots/" />
+    <!-- Offer history CSV copied here only when the user taps Export. -->
+    <cache-path name="export" path="export/" />
 </paths>

@@ -76,5 +76,7 @@ data class AppSettings(
     val snapshotScreenshot: Boolean = false,
     /** Save a log entry (read text, OCR lines, why it failed) every time an offer is shown as "Unreadable". Off until the user turns it on. */
     val logUnreadable: Boolean = false,
+    /** Keep price / km / minutes of every recognised offer for the Stats tab. */
+    val historyEnabled: Boolean = true,
     val targetPackages: Set<String> = UberAdapterConfig().targetPackages,
 )

@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Tab(val en: String, val zh: String, val glyph: String) {
-    HOME("Status", "状态", "●"), RULES("Rules", "规则", "$"), MOCK("Mock", "模拟", "▶"), DEBUG("Debug", "调试", "⚙")
+    HOME("Status", "状态", "●"), RULES("Rules", "规则", "$"), STATS("Stats", "统计", "▤"), MOCK("Mock", "模拟", "▶"), DEBUG("Debug", "调试", "⚙")
 }
 
 @Composable
@@ -65,6 +65,7 @@ private fun AppRoot(settings: AppSettings, repo: com.offerpilot.app.settings.Set
         when (Tab.entries[tab]) {
             Tab.HOME -> HomeScreen(settings, repo, m)
             Tab.RULES -> RulesScreen(settings, repo, m)
+            Tab.STATS -> StatsScreen(settings, repo, m)
             Tab.MOCK -> MockOfferScreen(settings, m)
             Tab.DEBUG -> DebugScreen(settings, repo, m)
         }

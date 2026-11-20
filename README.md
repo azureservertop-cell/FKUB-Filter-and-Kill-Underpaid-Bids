@@ -94,6 +94,7 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 
 - **Status**: language, service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
+- **Stats**: a log of every offer FKUB read (time, shown price, km and minutes only), re-judged with your current rules: tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
 - **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
 - **Debug**: target package, continuous capture (one tap to start, one to stop, zipped for sharing), single snapshots, capture list.
 
@@ -105,6 +106,7 @@ core/   pure Kotlin/JVM, no Android dependency, unit-tested
   parser/    OfferParser (money / distance / time, OCR repair), OfferAdapter, UberDriverAdapter
   rules/     OfferEvaluator, EvaluatorSettings
   tracking/  OfferTracker (dedupe, settle time for incomplete offers, withdraw when gone)
+  stats/     OfferRecord, OfferStats (history re-evaluated with the current rules)
   format/    OfferMessages (pill / speech / detail text, English + Chinese)
   i18n/      Lang
   OfferPipeline  recognize → track → evaluate
@@ -117,6 +119,7 @@ app/    Android
   speech/         Speaker (TextToSpeech on the navigation-guidance channel)
   settings/       AppSettings, SettingsRepository (DataStore)
   debug/          SnapshotStore
+  history/        OfferHistory (offer log CSV in app-private storage)
   action/         OfferActionHandler (no-op only)
   ui/             Compose screens
 ```
@@ -129,6 +132,7 @@ app/    Android
 - Missing price / distance / time, indistinguishable candidates, several accept buttons, implausible values (≤ 0, huge, average speed > 130 km/h), confidence < 0.6 or data older than 30 s → **unknown**.
 - When the popup disappears or you switch apps, the glow and pill are removed and speech stops immediately.
 - The same offer isn't announced twice within 20 s; incomplete offers get 0.7 s to fill in before "incomplete" is reported.
+- A screen only counts as an offer if it has the **Accept** button or the "estimated tip" label, so Uber's trip history and earnings pages (which also show prices, km and minutes) are ignored. A window that keeps showing no offer is OCR'd at most every 5 s instead of continuously.
 - Events are throttled (≤ 1 read per 150 ms), nodes are read on a worker thread with a 1500-node cap, OCR runs at most every 0.8 s, and every error degrades to "no offer" without affecting Uber Driver.
 
 ## Building
@@ -142,13 +146,13 @@ CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishe
 
 ## Tests
 
-`core/src/test` has 70 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, fuel-price CSV parsing, and the English / Chinese messages.
+`core/src/test` has 82 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
 
 Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 
 ## Privacy
 
-The only network requests are for public fuel-price data in Auto mode (Ontario open data, falling back to Statistics Canada); they only download whole public datasets, and your city is matched on the phone. Switch fuel price to Manual and the app makes no network requests at all. Screenshots are processed in memory and never saved by default. Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses, names and order numbers are not read.
+The only network requests are for public fuel-price data in Auto mode (Ontario open data, falling back to Statistics Canada); they only download whole public datasets, and your city is matched on the phone. Switch fuel price to Manual and the app makes no network requests at all. Screenshots are processed in memory and never saved by default. The offer log keeps only time, price, km and minutes in app-private storage (it is deleted with the app, and you can clear it or turn it off on the Stats tab). Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses, names and order numbers are not read.
 
 ## Status and limitations
 
