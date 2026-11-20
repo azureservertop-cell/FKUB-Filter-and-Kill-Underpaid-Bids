@@ -14,7 +14,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -30,9 +32,20 @@ class MainActivity : ComponentActivity() {
         val repo = (application as OfferPilotApp).settings
         setContent {
             MaterialTheme {
-                val settings by repo.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
+                val loaded by repo.settings.collectAsStateWithLifecycle<AppSettings?>(initialValue = null)
+                val settings = loaded ?: return@MaterialTheme // wait for saved settings so the consent page doesn't flash
+                val scope = rememberCoroutineScope()
                 CompositionLocalProvider(LocalLang provides settings.language) {
-                    AppRoot(settings, repo)
+                    if (!settings.consentAccepted) {
+                        ConsentScreen(
+                            lang = settings.language,
+                            onLanguage = { l -> scope.launch { repo.update { it.copy(language = l) } } },
+                            onAgree = { scope.launch { repo.update { it.copy(consentAccepted = true) } } },
+                            onDecline = { finish() },
+                        )
+                    } else {
+                        AppRoot(settings, repo)
+                    }
                 }
             }
         }
@@ -45,15 +58,18 @@ private enum class Tab(val en: String, val zh: String, val glyph: String) {
 
 @Composable
 private fun AppRoot(settings: AppSettings, repo: com.offerpilot.app.settings.SettingsRepository) {
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    // The Debug tab only exists once developer options are on (tap the version number 7 times).
+    val tabs = Tab.entries.filter { it != Tab.DEBUG || settings.developerMode }
+    var tabName by rememberSaveable { mutableStateOf(Tab.HOME.name) }
+    val current = tabs.firstOrNull { it.name == tabName } ?: Tab.HOME
     LaunchedEffect(Unit) { runCatching { FuelPriceUpdater.refreshIfDue(repo) } }
     Scaffold(
         bottomBar = {
             NavigationBar {
-                Tab.entries.forEachIndexed { i, t ->
+                tabs.forEach { t ->
                     NavigationBarItem(
-                        selected = tab == i,
-                        onClick = { tab = i },
+                        selected = current == t,
+                        onClick = { tabName = t.name },
                         icon = { Text(t.glyph) },
                         label = { Text(tr(t.en, t.zh)) },
                     )
@@ -62,7 +78,7 @@ private fun AppRoot(settings: AppSettings, repo: com.offerpilot.app.settings.Set
         }
     ) { padding ->
         val m = Modifier.padding(padding)
-        when (Tab.entries[tab]) {
+        when (current) {
             Tab.HOME -> HomeScreen(settings, repo, m)
             Tab.RULES -> RulesScreen(settings, repo, m)
             Tab.STATS -> StatsScreen(settings, repo, m)

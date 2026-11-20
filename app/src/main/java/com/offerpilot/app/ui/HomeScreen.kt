@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -122,10 +123,14 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                 value = s.overlaySeconds.toFloat(), valueRange = 3f..20f, steps = 16,
                 onValueChange = { v -> upd { it.copy(overlaySeconds = v.roundToInt()) } },
             )
-            SwitchRow(tr("Debug mode", "调试模式"), s.debugMode, { v -> upd { it.copy(debugMode = v) } }, tr("Enables snapshot capture and other tools (see the Debug tab)", "启用快照抓取等调试工具（见「调试」页）"))
+            if (s.developerMode) {
+                SwitchRow(tr("Debug mode", "调试模式"), s.debugMode, { v -> upd { it.copy(debugMode = v) } }, tr("Enables snapshot capture and other tools (see the Debug tab)", "启用快照抓取等调试工具（见「调试」页）"))
+            }
         }
 
         SoundSection(s, repo)
+
+        VersionFooter(s, repo)
 
     }
 }
@@ -134,4 +139,31 @@ fun isServiceEnabled(ctx: Context): Boolean {
     val am = ctx.getSystemService(AccessibilityManager::class.java) ?: return false
     return am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
         .any { it.resolveInfo.serviceInfo.packageName == ctx.packageName }
+}
+
+/** Version line. Tapping it 7 times turns on developer options (the Debug tab), like Android's build number. */
+@androidx.compose.runtime.Composable
+private fun VersionFooter(s: AppSettings, repo: SettingsRepository) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var taps by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val version = androidx.compose.runtime.remember {
+        runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "?"
+    }
+    Text(
+        tr("Version $version", "版本 $version"),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(vertical = 16.dp).clickable {
+            if (s.developerMode) return@clickable
+            taps++
+            if (taps >= 7) {
+                taps = 0
+                scope.launch { repo.update { it.copy(developerMode = true) } }
+                android.widget.Toast.makeText(ctx, if (s.language == Lang.ZH) "已开启开发者选项（调试页）" else "Developer options on (Debug tab)", android.widget.Toast.LENGTH_SHORT).show()
+            } else if (taps >= 4) {
+                android.widget.Toast.makeText(ctx, if (s.language == Lang.ZH) "再点 ${7 - taps} 次" else "${7 - taps} more taps", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        },
+    )
 }

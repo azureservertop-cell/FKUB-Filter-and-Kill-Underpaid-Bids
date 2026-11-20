@@ -59,6 +59,14 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     fun upd(f: (AppSettings) -> AppSettings) = scope.launch { repo.update(f) }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text(
+            tr("Developer options. Snapshots and logs saved here can contain customer addresses shown on screen: keep them on your phone, share them only with the developer, never publicly, and delete them afterwards.",
+                "开发者选项。这里保存的快照和记录可能包含屏幕上的顾客地址：只保存在手机上，只发给开发者，不要公开分享，用完请删除。"),
+            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
+        )
+        TextButton(onClick = {
+            upd { it.copy(developerMode = false, debugMode = false, autoSnapshot = false, logUnreadable = false, snapshotScreenshot = false) }
+        }) { Text(tr("Turn off developer options", "关闭开发者选项")) }
         Section(tr("Target app (advanced)", "目标应用（高级）")) {
             androidx.compose.material3.OutlinedTextField(
                 targetsText, { targetsText = it },

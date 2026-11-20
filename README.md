@@ -18,7 +18,7 @@ When Uber Driver pops up a delivery offer, FKUB reads the price, distance and ti
 On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/releases/download/latest/FKUB-debug.apk). CI rebuilds it on every push to `main`.
 
 1. Install it (allow "install unknown apps").
-2. Open FKUB → **Status** → **Choose app** and pick the delivery app you drive with (e.g. Uber Driver). Nothing is read until you pick one.
+2. Open FKUB, read the first-run notice (what it reads, that it never taps or uploads) and agree. Then **Status** → **Choose app** and pick the delivery app you drive with (e.g. Uber Driver). Nothing is read until you pick one.
 3. **Status** → **Open accessibility settings** → turn on **FKUB**.
    - On Android 13+ a sideloaded app's switch may be greyed out: Settings → Apps → FKUB → ⋮ (top right) → **Allow restricted settings**, then turn it on again.
 4. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI, overlay and speech to Chinese.
@@ -99,7 +99,7 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
 - **Stats**: a log of every offer FKUB read (time, shown price, km and minutes only), re-judged with your current rules: this week's share of offers below your own standard (vs last week), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
 - **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
-- **Debug**: target package, continuous capture (one tap to start, one to stop, zipped for sharing), single snapshots, capture list.
+- **Debug** (developer only: tap the version number at the bottom of Status 7 times): target package, continuous capture (one tap to start, one to stop, zipped for sharing), single snapshots, capture list.
 
 ## Architecture
 
@@ -163,6 +163,10 @@ The only network requests are for public fuel-price data in Auto mode (Ontario o
 - OCR needs Android 14+ for window-only screenshots; Android 11–13 fall back to a full screenshot cropped to Uber's window.
 - Auto fuel price uses government regional averages (weekly for Ontario cities, monthly from Statistics Canada elsewhere), so it lags the pump by days to weeks. The data layouts are discovered at runtime; if a source changes, the app keeps the last price and shows the error.
 - Debug builds only, signed with a fixed debug key kept in the repo (`app/fkub-debug.keystore`), so each new build installs over the last one. Builds from before 2026-11-20 used a random key per build: uninstall those once before installing.
+
+## License
+
+[GPL-3.0](LICENSE). You may use, change and redistribute FKUB, but modified versions you distribute must also be released under GPL-3.0 with their source code.
 
 ## Credits
 

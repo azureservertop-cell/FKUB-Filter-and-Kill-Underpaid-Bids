@@ -49,6 +49,8 @@ class SettingsRepository(private val context: Context) {
         val logUnreadable = booleanPreferencesKey("log_unreadable")
         val history = booleanPreferencesKey("history_enabled")
         val homeCities = stringPreferencesKey("home_cities")
+        val developer = booleanPreferencesKey("developer_mode")
+        val consent = booleanPreferencesKey("consent_v1")
         val targets = stringPreferencesKey("target_packages")
         val language = stringPreferencesKey("language")
         val fuelMode = stringPreferencesKey("fuel_mode")
@@ -118,6 +120,8 @@ class SettingsRepository(private val context: Context) {
             logUnreadable = this[K.logUnreadable] ?: d.logUnreadable,
             historyEnabled = this[K.history] ?: d.historyEnabled,
             homeCities = this[K.homeCities] ?: d.homeCities,
+            developerMode = this[K.developer] ?: d.developerMode,
+            consentAccepted = this[K.consent] ?: d.consentAccepted,
             targetPackages = this[K.targets]?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
                 ?: d.targetPackages,
         )
@@ -160,6 +164,8 @@ class SettingsRepository(private val context: Context) {
             p[K.logUnreadable] = n.logUnreadable
             p[K.history] = n.historyEnabled
             p[K.homeCities] = n.homeCities
+            p[K.developer] = n.developerMode
+            p[K.consent] = n.consentAccepted
             p[K.targets] = n.targetPackages.joinToString(",")
             p[K.language] = n.language.name
             p[K.fuelMode] = n.fuel.mode.name

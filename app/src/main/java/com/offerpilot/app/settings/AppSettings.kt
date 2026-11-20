@@ -69,6 +69,10 @@ data class AppSettings(
     val overlayPosition: OverlayPosition = OverlayPosition.TOP,
     val overlaySeconds: Int = 8,
     val debugMode: Boolean = false,
+    /** Developer options (Debug tab, snapshots). Hidden until the version number is tapped 7 times. */
+    val developerMode: Boolean = false,
+    /** The user has read the first-run disclosure and agreed. Nothing is read before that. */
+    val consentAccepted: Boolean = false,
     /** In debug mode, automatically save a node snapshot when a likely offer is detected. */
     val autoSnapshot: Boolean = false,
     /** Whether snapshots include a screenshot. Off by default (PRD 10.4: screenshots are not persisted by default). */
