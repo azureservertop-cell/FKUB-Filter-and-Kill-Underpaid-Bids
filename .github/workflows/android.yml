@@ -3,6 +3,8 @@ name: Android CI
 on:
   push:
     branches: [ main ]
+    # Pushing a tag like v1.0.0 builds a release APK signed with the maintainer's key and publishes a versioned release
+    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
 
@@ -59,3 +61,32 @@ jobs:
             --title "FKUB latest build (${GITHUB_SHA::7})" \
             --notes "Debug APK built automatically from main. Recognition and advice only; it never taps anything. English by default, Chinese in the app. 由 main 分支自动构建的调试版，App 内可切换中文。" \
             --prerelease
+
+      # ---- Versioned release (tags v*): signed with the release key from repository secrets ----
+      - name: Build signed release APK
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          FKUB_KEYSTORE_BASE64: ${{ secrets.FKUB_KEYSTORE_BASE64 }}
+          FKUB_KEYSTORE_PASSWORD: ${{ secrets.FKUB_KEYSTORE_PASSWORD }}
+          FKUB_KEY_ALIAS: ${{ secrets.FKUB_KEY_ALIAS }}
+          FKUB_KEY_PASSWORD: ${{ secrets.FKUB_KEY_PASSWORD }}
+        run: |
+          if [ -z "$FKUB_KEYSTORE_BASE64" ]; then
+            echo "::error::Release secrets are missing (FKUB_KEYSTORE_BASE64 etc.). See docs/RELEASING.md."
+            exit 1
+          fi
+          export FKUB_KEYSTORE_PATH="$RUNNER_TEMP/fkub-release.jks"
+          echo "$FKUB_KEYSTORE_BASE64" | base64 -d > "$FKUB_KEYSTORE_PATH"
+          export FKUB_VERSION_NAME="${GITHUB_REF_NAME#v}"
+          ./gradlew --no-daemon :app:assembleRelease
+          rm -f "$FKUB_KEYSTORE_PATH"
+          cp app/build/outputs/apk/release/app-release.apk "FKUB-${GITHUB_REF_NAME}.apk"
+
+      - name: Publish versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "FKUB-${GITHUB_REF_NAME}.apk" \
+            --title "FKUB ${GITHUB_REF_NAME}" \
+            --notes "Signed release build. If you installed a debug build before, uninstall it once first (different signing key). 正式签名版。如果之前装过调试版，需要先卸载一次（签名不同）。"

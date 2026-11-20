@@ -155,14 +155,18 @@ Integration checks that need a real device are listed in [docs/PHASE0.md](docs/P
 
 ## Privacy
 
-The only network requests are for public fuel-price data in Auto mode (Ontario open data, falling back to Statistics Canada); they only download whole public datasets, and your city is matched on the phone. Switch fuel price to Manual and the app makes no network requests at all. Screenshots are processed in memory and never saved by default. The offer log keeps only time, price, km and minutes in app-private storage (it is deleted with the app, and you can clear it or turn it off on the Stats tab). Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses are never saved, logged or uploaded. If the out-of-town alert is on, the city name in the drop-off address is compared with the city you set, in memory only, and then discarded. Names and order numbers are not read. Debug snapshots and the unreadable-offer log (both off by default) save the text on screen, which can include addresses; they stay on the phone.
+The only network requests are for public fuel-price data in Auto mode (Ontario open data, falling back to Statistics Canada); they only download whole public datasets, and your city is matched on the phone. Switch fuel price to Manual and the app makes no network requests at all. Screenshots are processed in memory and never saved by default. The offer log keeps only time, price, km and minutes in app-private storage (it is deleted with the app, and you can clear it or turn it off on the Stats tab). Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses are never uploaded. In normal use they are never saved or logged: the out-of-town alert compares the drop-off city in memory and discards it. Only the hidden developer options (off by default) can save screen text, which may include addresses; it stays on the phone. Names and order numbers are not read.
 
 ## Status and limitations
 
 - Verified on one phone (nubia, Android 15) in London, Ontario, with Canadian-dollar offers in English. Other Uber layouts (multi-stop, other languages, other regions) haven't been seen yet; the adapter answers "unknown" rather than guessing.
 - OCR needs Android 14+ for window-only screenshots; Android 11–13 fall back to a full screenshot cropped to Uber's window.
 - Auto fuel price uses government regional averages (weekly for Ontario cities, monthly from Statistics Canada elsewhere), so it lags the pump by days to weeks. The data layouts are discovered at runtime; if a source changes, the app keeps the last price and shows the error.
-- Debug builds only, signed with a fixed debug key kept in the repo (`app/fkub-debug.keystore`), so each new build installs over the last one. Builds from before 2026-11-20 used a random key per build: uninstall those once before installing.
+- The rolling `latest` build is a debug build signed with a public debug key kept in the repo (`app/fkub-debug.keystore`), for testing only. Versioned releases (tags `v*`) are signed with a private release key; see [docs/RELEASING.md](docs/RELEASING.md). The two use different keys, so switching between them needs one uninstall.
+
+## Disclaimer
+
+FKUB is an independent project and is not affiliated with, endorsed by or sponsored by Uber. Uber is a trademark of its owner.
 
 ## License
 

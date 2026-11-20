@@ -14,7 +14,8 @@ android {
         targetSdk = 35
         // CI run number, so every published build is a newer version than the last one
         versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        // Release tags (v1.2.3) set FKUB_VERSION_NAME; other builds are 0.1.<run number>
+        versionName = System.getenv("FKUB_VERSION_NAME") ?: ("0.1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0"))
     }
 
     // A fixed debug key checked into the repo. Without it every CI runner generates its own debug key, the APK's
@@ -27,13 +28,23 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        // Release key: held only by the maintainer. CI decodes it from GitHub Actions secrets into a temp file;
+        // it is never committed. Without it, release builds are left unsigned (never signed with the public debug key).
+        val releaseStore = System.getenv("FKUB_KEYSTORE_PATH")?.let { file(it) }?.takeIf { it.exists() }
+        if (releaseStore != null) {
+            create("release") {
+                storeFile = releaseStore
+                storePassword = System.getenv("FKUB_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("FKUB_KEY_ALIAS")
+                keyPassword = System.getenv("FKUB_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Without a release keystore, sign with the debug key so the APK can be sideloaded
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     compileOptions {
