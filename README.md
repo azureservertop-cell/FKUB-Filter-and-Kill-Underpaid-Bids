@@ -65,9 +65,9 @@ ratio             = tip-free pay / required pay
 missing / ambiguous / implausible / low confidence / stale → unknown (no glow, grey pill)
 ```
 
-85%, 1.2 and 1.5 are all adjustable. The Rules tab also lists, for your car, the minimum price Uber has to show for each tier at different times and distances.
+85%, 1.2 and 1.5 are all adjustable. FKUB has no shared or "recommended" standard: the starting numbers are examples, the app asks you to enter your own, and each driver decides by their own numbers. The Rules tab also lists, for your car, the minimum price Uber has to show for each tier at different times and distances.
 
-Defaults (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $18/h → $0.30/min; 85% tip-free):
+Example numbers, not a recommendation (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $18/h → $0.30/min; 85% tip-free):
 
 | Offer | Shown · distance · time | Tip-free | Required | Ratio | Est. net hourly | Verdict |
 |---|---|---|---|---|---|---|

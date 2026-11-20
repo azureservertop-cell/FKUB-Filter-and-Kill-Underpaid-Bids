@@ -60,6 +60,15 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
         Text(tr("Recognition and advice only. It never accepts or rejects offers for you.", "只做识别与建议，不会替你接单或拒单。"), style = MaterialTheme.typography.bodySmall)
 
         TargetAppSection(s, repo)
+        if (!s.rulesConfirmed) {
+            Section(tr("Set your own numbers", "设置你自己的标准")) {
+                Text(
+                    tr("FKUB starts with example car costs and an example $18/h target. Open the Rules tab and enter yours; until then verdicts are based on the examples.",
+                        "FKUB 一开始用的是示例车辆成本和示例目标 $18/h。请到「规则」页填你自己的数字，在那之前的判断都按示例计算。"),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
 
         Section(tr("Status", "运行状态")) {
             Text(tr("Accessibility service: ", "无障碍服务：") + when {

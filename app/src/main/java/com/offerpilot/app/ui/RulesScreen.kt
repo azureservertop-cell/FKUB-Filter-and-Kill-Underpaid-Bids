@@ -45,6 +45,16 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     fun upd(f: (EvaluatorSettings) -> EvaluatorSettings) = scope.launch { repo.update { it.copy(evaluator = f(it.evaluator)) } }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
+        if (!s.rulesConfirmed) {
+            Text(
+                tr("The numbers below are only examples, not a recommendation. Enter your own car costs and the hourly pay you want: FKUB judges every offer by your numbers, and the decision is always yours.",
+                    "下面的数字只是示例，不是推荐标准。请填你自己的车辆成本和你想要的时薪：FKUB 按你的数字判断每一单，接不接永远由你决定。"),
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium,
+            )
+            Button(onClick = { scope.launch { repo.update { it.copy(rulesConfirmed = true) } } }) {
+                Text(tr("These are my numbers", "这些就是我的数字"))
+            }
+        }
         Section(tr("My car", "我的车")) {
             Text(tr("Fill these in and FKUB works out which offers are worth it.", "填好这几项，就能自动算出什么样的单合适。"), style = MaterialTheme.typography.bodySmall)
             NumberField(tr("Fuel consumption (L/100 km)", "百公里油耗（L/100km）"), e.fuelLitersPer100Km, { v -> upd { it.copy(fuelLitersPer100Km = v) } })

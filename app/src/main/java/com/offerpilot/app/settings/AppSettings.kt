@@ -73,6 +73,8 @@ data class AppSettings(
     val developerMode: Boolean = false,
     /** The user has read the first-run disclosure and agreed. Nothing is read before that. */
     val consentAccepted: Boolean = false,
+    /** The driver has reviewed the car costs and target on the Rules tab (defaults are only examples). */
+    val rulesConfirmed: Boolean = false,
     /** In debug mode, automatically save a node snapshot when a likely offer is detected. */
     val autoSnapshot: Boolean = false,
     /** Whether snapshots include a screenshot. Off by default (PRD 10.4: screenshots are not persisted by default). */
