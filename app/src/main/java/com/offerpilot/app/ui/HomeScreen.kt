@@ -57,6 +57,8 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
         Text(tr("Filter & Kill Underpaid Bids · you decide what an offer is worth", "Filter & Kill Underpaid Bids · 筛掉低价单，报价好坏司机说了算"), style = MaterialTheme.typography.bodySmall)
         Text(tr("Recognition and advice only. It never accepts or rejects offers for you.", "只做识别与建议，不会替你接单或拒单。"), style = MaterialTheme.typography.bodySmall)
 
+        TargetAppSection(s, repo)
+
         Section(tr("Status", "运行状态")) {
             Text(tr("Accessibility service: ", "无障碍服务：") + when {
                 status.serviceConnected -> tr("on", "已开启")

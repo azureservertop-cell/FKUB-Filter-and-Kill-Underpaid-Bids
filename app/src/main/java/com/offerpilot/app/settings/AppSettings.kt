@@ -2,7 +2,6 @@ package com.offerpilot.app.settings
 
 import com.offerpilot.core.i18n.Lang
 import com.offerpilot.core.model.Verdict
-import com.offerpilot.core.parser.UberAdapterConfig
 import com.offerpilot.core.rules.EvaluatorSettings
 
 enum class OverlayPosition { TOP, CENTER }
@@ -80,5 +79,6 @@ data class AppSettings(
     val historyEnabled: Boolean = true,
     /** Your cities for the out-of-town alert, comma or semicolon separated. Blank = the fuel-price city. */
     val homeCities: String = "",
-    val targetPackages: Set<String> = UberAdapterConfig().targetPackages,
+    /** Apps to watch, picked by the user from the installed-app list. Empty = nothing is read. */
+    val targetPackages: Set<String> = emptySet(),
 )

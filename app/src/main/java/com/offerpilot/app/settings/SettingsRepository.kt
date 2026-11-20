@@ -119,7 +119,7 @@ class SettingsRepository(private val context: Context) {
             historyEnabled = this[K.history] ?: d.historyEnabled,
             homeCities = this[K.homeCities] ?: d.homeCities,
             targetPackages = this[K.targets]?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet()
-                ?.ifEmpty { null } ?: d.targetPackages,
+                ?: d.targetPackages,
         )
     }
 

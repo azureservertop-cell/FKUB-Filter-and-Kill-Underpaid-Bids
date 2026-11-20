@@ -59,15 +59,15 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
     fun upd(f: (AppSettings) -> AppSettings) = scope.launch { repo.update(f) }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Section(tr("Target app", "目标应用")) {
+        Section(tr("Target app (advanced)", "目标应用（高级）")) {
             androidx.compose.material3.OutlinedTextField(
                 targetsText, { targetsText = it },
                 label = { Text(tr("Package names (comma-separated)", "包名（逗号分隔）")) }, singleLine = true,
             )
-            Text(tr("Default com.ubercab.driver (Uber Driver, confirmed on a real device).", "默认 com.ubercab.driver（Uber Driver 公开包名，待真机确认）。"), style = MaterialTheme.typography.bodySmall)
+            Text(tr("Usually picked from the app list on the Status tab. Type package names here only for apps that list doesn't show.", "一般在「状态」页的应用列表里选。只有列表里找不到的应用才需要在这里手动填包名。"), style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = {
                 val set = targetsText.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-                if (set.isNotEmpty()) upd { it.copy(targetPackages = set) }
+                upd { it.copy(targetPackages = set) }
             }) { Text(tr("Save", "保存")) }
             Text(tr("Last adapter status: ${status.lastAdapterNote ?: "—"}", "最近适配器状态：${status.lastAdapterNote ?: "—"}"), style = MaterialTheme.typography.bodySmall)
         }

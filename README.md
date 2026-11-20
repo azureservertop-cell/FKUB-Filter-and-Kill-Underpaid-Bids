@@ -18,9 +18,10 @@ When Uber Driver pops up a delivery offer, FKUB reads the price, distance and ti
 On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/releases/download/latest/FKUB-debug.apk). CI rebuilds it on every push to `main`.
 
 1. Install it (allow "install unknown apps").
-2. Open FKUB → **Status** → **Open accessibility settings** → turn on **FKUB**.
+2. Open FKUB → **Status** → **Choose app** and pick the delivery app you drive with (e.g. Uber Driver). Nothing is read until you pick one.
+3. **Status** → **Open accessibility settings** → turn on **FKUB**.
    - On Android 13+ a sideloaded app's switch may be greyed out: Settings → Apps → FKUB → ⋮ (top right) → **Allow restricted settings**, then turn it on again.
-3. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI, overlay and speech to Chinese.
+4. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI, overlay and speech to Chinese.
 
 ## How it works
 
@@ -94,7 +95,7 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 
 ## App tabs
 
-- **Status**: language, service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
+- **Status**: language, app to watch (picked from your installed apps), service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
 - **Stats**: a log of every offer FKUB read (time, shown price, km and minutes only), re-judged with your current rules: this week's share of offers below your own standard (vs last week), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
 - **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
@@ -130,7 +131,7 @@ app/    Android
 
 ### Failing safe
 
-- Only target-app windows are read; other apps are seen by package name only, to notice that you left Uber. OCR captures only Uber's window.
+- Only windows of the app(s) you picked are read (none until you pick one); other apps are seen by package name only, to notice that you left Uber. OCR captures only Uber's window.
 - Missing price / distance / time, indistinguishable candidates, several accept buttons, implausible values (≤ 0, huge, average speed > 130 km/h), confidence < 0.6 or data older than 30 s → **unknown**.
 - When the popup disappears or you switch apps, the glow and pill are removed and speech stops immediately.
 - The same offer isn't announced twice within 20 s; incomplete offers get 0.7 s to fill in before "incomplete" is reported.

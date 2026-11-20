@@ -143,6 +143,7 @@ class OfferMonitorService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || !(settings.monitoringEnabled || recording)) return
+        if (settings.targetPackages.isEmpty()) return // no app picked yet: read nothing
         if (!::workHandler.isInitialized) return
         // Events from other apps are only used to notice that the user left Uber; their content is never read.
         val relevant = when (event.eventType) {
@@ -167,6 +168,7 @@ class OfferMonitorService : AccessibilityService() {
     private fun processFrame() {
         val s = settings
         if (!s.monitoringEnabled && recordDir == null) return
+        if (s.targetPackages.isEmpty()) return
         val now = System.currentTimeMillis()
         try {
             val read = reader.read(s.targetPackages, now)
