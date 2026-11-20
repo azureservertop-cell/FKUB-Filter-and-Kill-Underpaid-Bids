@@ -166,7 +166,13 @@ The only network requests are for public fuel-price data in Auto mode (Ontario o
 
 ## License
 
-[GPL-3.0](LICENSE). You may use, change and redistribute FKUB, but modified versions you distribute must also be released under GPL-3.0 with their source code.
+FKUB is free for drivers and couriers, and it must stay that way. It is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE), with an extra permission for any driver or courier to use it on their own phone for their own delivery work.
+
+- Free to use, read, change and share for noncommercial purposes.
+- Not allowed: selling it or a changed version, paid or subscription versions, ads, bundling it into a paid product, or any other commercial use.
+- Changed versions must not use the FKUB name or icon.
+
+This is not an OSI "open source" license, because it forbids commercial use on purpose.
 
 ## Credits
 
