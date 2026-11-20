@@ -1,7 +1,7 @@
 # FKUB · Filter & Kill Underpaid Bids
 
-[![Android CI](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml/badge.svg)](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml)
-[![Latest APK](https://img.shields.io/badge/download-FKUB--debug.apk-1f6feb)](https://github.com/azureservertop-cell/Offerpilot/releases/download/latest/FKUB-debug.apk)
+[![Android CI](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/actions/workflows/android.yml/badge.svg)](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/actions/workflows/android.yml)
+[![Latest APK](https://img.shields.io/badge/download-FKUB--debug.apk-1f6feb)](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/releases/download/latest/FKUB-debug.apk)
 
 **English** · [中文](README.zh-CN.md)
 
@@ -15,7 +15,7 @@ When Uber Driver pops up a delivery offer, FKUB reads the price, distance and ti
 
 ## Download
 
-On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https://github.com/azureservertop-cell/Offerpilot/releases/download/latest/FKUB-debug.apk). CI rebuilds it on every push to `main`.
+On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/releases/download/latest/FKUB-debug.apk). CI rebuilds it on every push to `main`.
 
 1. Install it (allow "install unknown apps").
 2. Open FKUB → **Status** → **Open accessibility settings** → turn on **FKUB**.

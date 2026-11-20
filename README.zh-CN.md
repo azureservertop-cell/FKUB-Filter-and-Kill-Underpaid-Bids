@@ -1,7 +1,7 @@
 # FKUB · Filter & Kill Underpaid Bids
 
-[![Android CI](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml/badge.svg)](https://github.com/azureservertop-cell/Offerpilot/actions/workflows/android.yml)
-[![Latest APK](https://img.shields.io/badge/download-FKUB--debug.apk-1f6feb)](https://github.com/azureservertop-cell/Offerpilot/releases/download/latest/FKUB-debug.apk)
+[![Android CI](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/actions/workflows/android.yml/badge.svg)](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/actions/workflows/android.yml)
+[![Latest APK](https://img.shields.io/badge/download-FKUB--debug.apk-1f6feb)](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/releases/download/latest/FKUB-debug.apk)
 
 [English](README.md) · **中文**
 
@@ -15,7 +15,7 @@ Uber Driver 弹出配送订单时，FKUB 读取报价、距离和时间，按你
 
 ## 下载
 
-在手机上打开仓库的 **Releases → latest**，下载 [`FKUB-debug.apk`](https://github.com/azureservertop-cell/Offerpilot/releases/download/latest/FKUB-debug.apk)。每次推送 main 后 CI 会自动更新。
+在手机上打开仓库的 **Releases → latest**，下载 [`FKUB-debug.apk`](https://github.com/azureservertop-cell/FKUB-Filter-and-Kill-Underpaid-Bids/releases/download/latest/FKUB-debug.apk)。每次推送 main 后 CI 会自动更新。
 
 1. 安装（需要允许“安装未知应用”）。
 2. 打开 FKUB →「Status / 状态」→「打开系统无障碍设置」→ 开启 **FKUB**。

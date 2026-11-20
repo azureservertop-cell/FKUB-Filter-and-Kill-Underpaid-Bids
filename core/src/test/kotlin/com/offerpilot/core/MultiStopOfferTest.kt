@@ -93,4 +93,25 @@ class MultiStopOfferTest {
         assertEquals("CA$25.07" to true, fix("CA$25.O7"))
         assertEquals("$5 off" to false, fix("$5 off"))
     }
+
+    /** Second real "Unreadable" offer (2026-11-19 20:32): "Delivery (2)", CA$16.06, "50 min (30.5 km) total". */
+    @Test fun second_batch_offer_with_decimal_dropped() {
+        for (trip in listOf("50 min (30.5 km) total", "50 min (305 km) total", "5O min (30.5 krn) total")) {
+            val screen = ocr(
+                "Delivery (2)" to Box(215, 1535, 460, 1620),
+                "Exclusive" to Box(540, 1535, 740, 1620),
+                "CA$16.06" to Box(110, 1655, 670, 1775),
+                "including estimated tip" to Box(135, 1805, 630, 1885),
+                trip to Box(215, 1975, 750, 2055),
+                "Culture Crust (London)" to Box(215, 2140, 780, 2215),
+                "Sunset Rd, St Thomas" to Box(215, 2245, 750, 2320),
+                "Accept" to Box(520, 2445, 700, 2525),
+            )
+            val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen), trip).offer
+            assertEquals(16.06, o.estimatedPayout, trip)
+            assertEquals(30.5, o.distanceKm, trip)
+            assertEquals(50.0, o.durationMinutes, trip)
+            assertTrue(OfferEvaluator().evaluate(o).isConclusive, "$trip ${o.issues}")
+        }
+    }
 }
