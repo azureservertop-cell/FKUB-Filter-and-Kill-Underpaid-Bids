@@ -5,7 +5,7 @@ import com.offerpilot.core.i18n.Lang
 /**
  * Verdict: four tiers (edge glow colour) + unknown.
  *  (ratio = tip-free pay ÷ required pay, required pay = vehicle cost + target net hourly × hours)
- *  - LOSS red: ratio < 1, tip-free pay doesn't cover target net hourly + vehicle cost (spoken as "losing money" when even vehicle cost isn't covered)
+ *  - LOSS red: ratio < 1, tip-free pay doesn't cover target net hourly + vehicle cost
  *  - MIN_WAGE yellow: 1 ≤ ratio < goodRatio, just meets the target
  *  - GOOD green: goodRatio ≤ ratio < greatRatio, pays well
  *  - GREAT blue: ratio ≥ greatRatio, must-take

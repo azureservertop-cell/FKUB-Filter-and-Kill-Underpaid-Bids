@@ -58,7 +58,7 @@ vehicle cost / km = (L/100km × fuel price + maintenance per 100 km) / 100
 required pay      = km × vehicle cost/km + hours × target net hourly
 ratio             = tip-free pay / required pay
 
-🔴 red    below target : ratio < 1 (spoken as "losing money" if it doesn't even cover vehicle cost)
+🔴 red    below target : ratio < 1
 🟡 yellow meets target : 1 ≤ ratio < 1.2, i.e. $18/h net even with no tip
 🟢 green  good pay     : 1.2 ≤ ratio < 1.5
 🔵 blue   must take    : ratio ≥ 1.5

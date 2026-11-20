@@ -32,8 +32,7 @@ object OfferMessages {
         if (result.verdict == Verdict.UNKNOWN) return Verdict.UNKNOWN.speech(lang) + lang.t(".", "。")
         val p = offer.estimatedPayout!!.roundToInt()
         val k = offer.distanceKm!!.roundToInt()
-        val losing = result.verdict == Verdict.LOSS && (result.netAfterVehicleCost ?: 0.0) < 0
-        val word = if (losing) lang.t("losing money", "亏本") else result.verdict.speech(lang)
+        val word = result.verdict.speech(lang)
         return when (lang) {
             Lang.ZH -> "${p}块，${k}公里，$word。"
             Lang.EN -> "$p ${if (p == 1) "dollar" else "dollars"}, $k ${if (k == 1) "kilometre" else "kilometres"}, $word."
