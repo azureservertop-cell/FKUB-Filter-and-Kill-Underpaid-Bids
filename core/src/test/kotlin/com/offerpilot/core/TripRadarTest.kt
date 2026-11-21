@@ -74,4 +74,48 @@ class TripRadarTest {
         assertEquals(11.56, r.offer.estimatedPayout)
         assertTrue(r.complete)
     }
+
+    /** Real (2026-11-21): a single "Match" card over the map, with the "Trip Radar 2" chip above it → full offer. */
+    @Test fun match_card_over_map_with_radar_chip() {
+        val screen = ocr(
+            "21:58" to Box(50, 35, 145, 80),
+            "LONDON" to Box(160, 520, 430, 565),
+            "ARGYLE PARK" to Box(345, 935, 770, 985),
+            "Trip Radar" to Box(450, 1330, 670, 1390),
+            "2" to Box(715, 1330, 750, 1385),
+            "Delivery (2)" to Box(215, 1530, 460, 1590),
+            "CA$13.66" to Box(110, 1640, 665, 1750),
+            "including estimated tip" to Box(135, 1800, 630, 1860),
+            "24 min (6.0 km) total" to Box(215, 1960, 715, 2025),
+            "McDonald's (1950 Dundas)" to Box(215, 2110, 870, 2175),
+            "Bonaventure Dr & Trafalgar St," to Box(215, 2210, 950, 2270),
+            "London" to Box(215, 2290, 400, 2350),
+            "Match" to Box(540, 2460, 675, 2525),
+        )
+        val r = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen))
+        assertEquals(13.66, r.offer.estimatedPayout); assertEquals(6.0, r.offer.distanceKm); assertEquals(24.0, r.offer.durationMinutes)
+        assertTrue(r.complete)
+        assertEquals("London", r.offer.dropoffCity)
+        assertTrue(OfferEvaluator().evaluate(r.offer).isConclusive)
+    }
+
+    /** Real (2026-11-21): "Match" card over the map without the chip. */
+    @Test fun match_card_over_map() {
+        val screen = ocr(
+            "London" to Box(425, 415, 635, 470),
+            "Highland Country" to Box(405, 1255, 805, 1310),
+            "Club" to Box(550, 1315, 655, 1370),
+            "Delivery (2)" to Box(215, 1575, 460, 1635),
+            "CA$12.07" to Box(110, 1690, 660, 1795),
+            "including estimated tip" to Box(135, 1845, 630, 1905),
+            "28 min (8.7 km) total" to Box(215, 2005, 715, 2070),
+            "Wendy's (338 Wellington Rd)" to Box(215, 2155, 920, 2220),
+            "Forbes St & Winston Ave, London" to Box(215, 2265, 1010, 2330),
+            "Match" to Box(540, 2460, 675, 2525),
+        )
+        val r = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen))
+        assertEquals(12.07, r.offer.estimatedPayout); assertEquals(8.7, r.offer.distanceKm); assertEquals(28.0, r.offer.durationMinutes)
+        assertTrue(r.complete)
+        assertEquals("London", r.offer.dropoffCity)
+    }
 }

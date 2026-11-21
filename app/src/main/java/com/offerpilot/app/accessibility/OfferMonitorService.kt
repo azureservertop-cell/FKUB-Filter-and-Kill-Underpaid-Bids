@@ -66,7 +66,9 @@ class OfferMonitorService : AccessibilityService() {
         private const val LIST_REFRESH_MS = 1_000L
         private const val OPAQUE_MAX_MISSES = 3
         /** OCR interval for an Uber window that has repeatedly shown no offer. */
-        private const val OCR_IDLE_INTERVAL_MS = 5_000L
+        private const val OCR_IDLE_INTERVAL_MS = 2_000L
+        /** An Uber window with this few readable lines is treated as hiding its text (OCR is used). */
+        private const val SPARSE_NODES = 8
         const val RECORD_MAX_COUNT = 1000
 
         private var instanceRef = WeakReference<OfferMonitorService>(null)
@@ -163,7 +165,12 @@ class OfferMonitorService : AccessibilityService() {
             return
         }
         val relevant = when (event.eventType) {
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOWS_CHANGED -> true
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED, AccessibilityEvent.TYPE_WINDOWS_CHANGED -> {
+                // A window appeared or changed (e.g. a "Match" card sliding up over Uber's map): forget the "no offer here"
+                // back-off so the next OCR runs right away instead of after the idle interval.
+                if (event.packageName?.toString() in settings.targetPackages) workHandler.post { opaqueMisses.clear() }
+                true
+            }
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> event.packageName?.toString() in settings.targetPackages
             else -> false
         }
@@ -230,7 +237,9 @@ class OfferMonitorService : AccessibilityService() {
         }
         if (bigOverlay != null) return bigOverlay.takeIf { ocrAllowed(it.id) }
         val app = read.windows.firstOrNull { it.isApplication }
-        if (app != null && read.screen.nodes.isEmpty()) return app.takeIf { ocrAllowed(it.id) }
+        // Uber's own screen with its text hidden. Besides a fully empty tree, allow a sparse one: on the map, a few labels
+        // (e.g. the "Trip Radar" chip) can stay readable while the offer card itself is hidden.
+        if (app != null && read.screen.nodes.size <= SPARSE_NODES) return app.takeIf { ocrAllowed(it.id) }
         // While Uber is online (an Uber window such as the floating bubble exists), a large unreadable window is most likely the offer card shown over another app.
         // If several OCR passes on the same window find no offer, stop capturing it so other apps' overlays aren't OCR'd repeatedly.
         return read.opaqueWindows.firstOrNull { (opaqueMisses[it.id] ?: 0) < OPAQUE_MAX_MISSES }

@@ -52,7 +52,12 @@ class UberDriverAdapter(
         val nodes = screen.nodes.filter { it.text.isNotBlank() }
         if (nodes.isEmpty() || nodes.any { it.bounds == null }) return null
         val markers = nodes.filter { n -> containsAny(n.text.lowercase(), config.offerMarkerKeywords) }.sortedBy { it.bounds!!.top }
-        val titled = nodes.any { n -> config.offerListKeywords.any { n.text.trim().equals(it, ignoreCase = true) } }
+        // The list page has "Trip Radar" as its title, well above the cards. On the map, Uber shows a "Trip Radar" chip just
+        // above a single card: that card is a normal offer and gets the full alert.
+        val firstMarkerTop = markers.firstOrNull()?.bounds?.top ?: 0
+        val titled = nodes.any { n ->
+            config.offerListKeywords.any { n.text.trim().equals(it, ignoreCase = true) } && n.bounds!!.top < firstMarkerTop / 2
+        }
         if (markers.size < 2 && !(titled && markers.isNotEmpty())) return null
         val starts = markers.map { m -> m.bounds!!.top - 3 * m.bounds.height }
         val cards = markers.mapIndexed { i, m ->
