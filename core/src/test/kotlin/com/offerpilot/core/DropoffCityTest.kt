@@ -106,3 +106,31 @@ class DropoffCityTest {
         assertEquals(OfferMessages.overlay(o, r, Lang.EN), OfferMessages.overlay(o, r, Lang.EN, null))
     }
 }
+
+class OutOfTownReturnTripTest {
+    private fun offer(city: String?) = com.offerpilot.core.model.DeliveryOffer(
+        offerId = "x", estimatedPayout = 20.0, distanceKm = 20.0, durationMinutes = 30.0, dropoffCity = city,
+        timestamp = 0L, source = OfferSource.OCR, confidence = 0.9f,
+    )
+    private val on = com.offerpilot.core.rules.EvaluatorSettings(outOfTownReturnTrip = true, homeCities = "London")
+
+    @Test fun out_of_town_adds_half_trip_by_default() {
+        val rt = OfferEvaluator(on).outOfTownReturnTrip(offer("St Thomas"))!!
+        assertEquals(10.0, rt.km, 1e-9); assertEquals(15.0, rt.minutes, 1e-9)
+        val base = OfferEvaluator(on.copy(outOfTownReturnTrip = false)).evaluate(offer("St Thomas"))
+        val withReturn = OfferEvaluator(on).evaluate(offer("St Thomas"))
+        assertTrue(withReturn.ratio!! < base.ratio!!)
+    }
+
+    @Test fun no_return_in_town_unknown_city_or_off() {
+        assertNull(OfferEvaluator(on).outOfTownReturnTrip(offer("London")))
+        assertNull(OfferEvaluator(on).outOfTownReturnTrip(offer(null)))
+        assertNull(OfferEvaluator(on.copy(outOfTownReturnTrip = false)).outOfTownReturnTrip(offer("St Thomas")))
+        assertNull(OfferEvaluator(on.copy(outOfTownAlert = false)).outOfTownReturnTrip(offer("St Thomas")))
+    }
+
+    @Test fun custom_multiplier() {
+        val rt = OfferEvaluator(on.copy(returnDistanceMultiplier = 2.0)).outOfTownReturnTrip(offer("St Thomas"))!!
+        assertEquals(20.0, rt.km, 1e-9)
+    }
+}

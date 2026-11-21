@@ -26,7 +26,9 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
         offer: DeliveryOffer,
         nowMs: Long = offer.timestamp,
         returnTrip: ReturnTrip? = null,
-    ): EvaluationResult {
+    ): EvaluationResult = evaluateWith(offer, nowMs, returnTrip ?: outOfTownReturnTrip(offer))
+
+    private fun evaluateWith(offer: DeliveryOffer, nowMs: Long, returnTrip: ReturnTrip?): EvaluationResult {
         val reasons = mutableListOf<UnknownReason>()
         val payout = offer.estimatedPayout
         val km = offer.distanceKm
@@ -118,5 +120,19 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
             ParseIssue.DURATION_AMBIGUOUS,
             ParseIssue.MULTIPLE_OFFERS,
         )
+    }
+
+    /**
+     * Out-of-town offers (drop-off city is not one of the driver's cities), when enabled: the empty drive back is
+     * estimated as (multiplier − 1) × the trip's distance and time. City-level only.
+     */
+    fun outOfTownReturnTrip(offer: DeliveryOffer): ReturnTrip? {
+        if (!settings.outOfTownAlert || !settings.outOfTownReturnTrip) return null
+        val extra = settings.returnDistanceMultiplier - 1.0
+        if (extra <= 0) return null
+        com.offerpilot.core.parser.DropoffCity.outOfTown(offer.dropoffCity, settings.homeCities) ?: return null
+        val km = offer.distanceKm ?: return null
+        val min = offer.durationMinutes ?: return null
+        return ReturnTrip(km * extra, min * extra)
     }
 }

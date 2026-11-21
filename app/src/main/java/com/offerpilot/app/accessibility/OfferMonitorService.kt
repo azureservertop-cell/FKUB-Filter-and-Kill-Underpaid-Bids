@@ -147,7 +147,7 @@ class OfferMonitorService : AccessibilityService() {
 
     private fun rebuildPipeline(s: AppSettings) {
         adapter = UberDriverAdapter(UberAdapterConfig(targetPackages = s.targetPackages))
-        evaluator = OfferEvaluator(s.evaluator)
+        evaluator = OfferEvaluator(s.evaluator.copy(homeCities = s.homeCities.ifBlank { s.fuel.region }))
         pipeline = OfferPipeline(adapter, evaluator, OfferTracker())
     }
 

@@ -84,7 +84,7 @@ These are your personal filter rules, not Uber's pay standard. Minimum-earnings 
 
 ## Alerts
 
-**Out-of-town alert** (on by default, Rules tab): when the city in the drop-off address (e.g. `Sunset Rd, St Thomas`) isn't one of your cities, the pill shows `⚠ St Thomas · Net $17/h` and speech adds "Out of town to St Thomas, watch the empty return." Only whole city names are compared, never streets, neighbourhoods or postal codes. Your cities default to the fuel-price city; add nearby towns you're happy with, e.g. `London, Thamesford`. If the card shows no city, there's no alert. It doesn't change the verdict.
+**Out-of-town alert** (on by default, Rules tab): when the city in the drop-off address (e.g. `Sunset Rd, St Thomas`) isn't one of your cities, the pill shows `⚠ St Thomas · Net $17/h` and speech adds "Out of town to St Thomas, watch the empty return." Only whole city names are compared, never streets, neighbourhoods or postal codes. Your cities default to the fuel-price city; add nearby towns you're happy with, e.g. `London, Thamesford`. If the card shows no city, there's no alert. By default it doesn't change the verdict; turn on **Count the drive back** to multiply an out-of-town offer's distance and time by a return multiplier (default 1.5, i.e. the trip plus half again for the empty drive back) before judging it.
 
 | Tier | Edge glow | Sound (built-in) | Vibration |
 |---|---|---|---|
@@ -151,7 +151,7 @@ CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishe
 
 ## Tests
 
-`core/src/test` has 93 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
+`core/src/test` has 98 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
 
 Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 

@@ -136,6 +136,15 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                     placeholder = { Text(sAll.fuel.region) },
                     singleLine = true, modifier = Modifier.fillMaxWidth(),
                 )
+                SwitchRow(
+                    tr("Count the drive back", "计入回城距离"), e.outOfTownReturnTrip, { v -> upd { it.copy(outOfTownReturnTrip = v) } },
+                    tr("For out-of-town offers, distance and time are multiplied by the factor below before judging (1.5 = the trip plus half again for the empty drive back).",
+                        "跨城单在计算前把距离和时间乘以下面的倍率（1.5 = 原路程再加一半，作为空驶回城）。"),
+                )
+                if (e.outOfTownReturnTrip) {
+                    NumberField(tr("Return distance multiplier", "回城距离倍率"), e.returnDistanceMultiplier,
+                        { v -> upd { it.copy(returnDistanceMultiplier = v) } }, valid = { it in 1.0..5.0 })
+                }
                 Text(
                     tr("Blank uses your fuel-price city (${sAll.fuel.region}). Add nearby towns you don't mind, e.g. “London, Thamesford”.",
                         "留空则使用油价城市（${sAll.fuel.region}）。不介意的周边城镇也可以加上，例如“London, Thamesford”。"),

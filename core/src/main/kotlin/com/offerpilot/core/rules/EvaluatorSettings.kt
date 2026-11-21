@@ -50,6 +50,14 @@ data class EvaluatorSettings(
     val maxOfferAgeMs: Long = 30_000,
     /** Alert when the drop-off city differs from the driver's own city (city only; doesn't change the verdict). */
     val outOfTownAlert: Boolean = true,
+    /**
+     * Count the empty drive back for out-of-town offers: distance and time are multiplied by
+     * [returnDistanceMultiplier] (1.5 = the trip plus half of it again for the way back). Off by default.
+     */
+    val outOfTownReturnTrip: Boolean = false,
+    val returnDistanceMultiplier: Double = 1.5,
+    /** The driver's cities (comma separated), filled in from the app settings at runtime; not stored here. */
+    val homeCities: String = "",
     /** Plausibility limits: anything beyond is treated as bad data. */
     val maxPlausiblePayout: Double = 500.0,
     val maxPlausibleKm: Double = 300.0,
