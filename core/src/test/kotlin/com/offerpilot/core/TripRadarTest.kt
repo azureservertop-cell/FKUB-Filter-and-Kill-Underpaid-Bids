@@ -119,3 +119,32 @@ class TripRadarTest {
         assertEquals("London", r.offer.dropoffCity)
     }
 }
+
+class OfferKindTest {
+    private fun ocr(vararg lines: String) = ScreenText(UBER, lines.map { TextNode(it) }, 1_000L, OfferSource.OCR)
+    private val card = arrayOf("CA$12.07", "including estimated tip", "28 min (8.7 km) total")
+
+    @Test fun kind_from_button() {
+        assertEquals(com.offerpilot.core.model.OfferKind.MATCH, assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(ocr(*card, "Match"))).offer.kind)
+        assertEquals(com.offerpilot.core.model.OfferKind.ACCEPT, assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(ocr(*card, "Accept"))).offer.kind)
+        assertEquals(null, assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(ocr(*card))).offer.kind)
+    }
+
+    @Test fun csv_keeps_kind_and_reads_old_rows() {
+        val r = com.offerpilot.core.stats.OfferRecord(1L, 12.07, 8.7, 28.0, com.offerpilot.core.model.OfferKind.MATCH)
+        assertEquals(r, com.offerpilot.core.stats.OfferRecord.fromCsv(r.toCsv()))
+        assertEquals(null, com.offerpilot.core.stats.OfferRecord.fromCsv("1,5.50,1.30,15.0")!!.kind)
+    }
+
+    @Test fun stats_split_by_kind() {
+        val recs = listOf(
+            com.offerpilot.core.stats.OfferRecord(1L, 7.0, 3.0, 10.0, com.offerpilot.core.model.OfferKind.MATCH),
+            com.offerpilot.core.stats.OfferRecord(2L, 5.5, 1.3, 15.0, com.offerpilot.core.model.OfferKind.ACCEPT),
+            com.offerpilot.core.stats.OfferRecord(3L, 9.0, 29.92, 42.0, null),
+        )
+        val k = com.offerpilot.core.stats.OfferStats.compute(recs, com.offerpilot.core.rules.EvaluatorSettings()) { 0 }.byKind
+        assertEquals(1, k[com.offerpilot.core.model.OfferKind.MATCH]!!.count)
+        assertEquals(1.0, k[com.offerpilot.core.model.OfferKind.MATCH]!!.meetsStandardShare)
+        assertEquals(0.0, k[com.offerpilot.core.model.OfferKind.ACCEPT]!!.meetsStandardShare)
+    }
+}

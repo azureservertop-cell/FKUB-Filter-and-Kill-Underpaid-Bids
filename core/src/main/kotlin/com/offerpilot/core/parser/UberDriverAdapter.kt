@@ -68,7 +68,9 @@ class UberDriverAdapter(
             val offer = (r as? AdapterResult.Offer) ?: return@mapIndexed null
             // Price line: the tallest text above the marker in this card
             val price = part.filter { it.bounds!!.bottom <= m.bounds!!.top + 4 }.maxByOrNull { it.bounds!!.height } ?: m
-            AdapterResult.Card(offer.offer.copy(issues = offer.offer.issues - ParseIssue.MULTIPLE_OFFERS), offer.complete, price.bounds!!)
+            // Every card on the Trip Radar list is a Match offer, even if its button is scrolled off screen
+            val o = offer.offer.copy(issues = offer.offer.issues - ParseIssue.MULTIPLE_OFFERS, kind = offer.offer.kind ?: com.offerpilot.core.model.OfferKind.MATCH)
+            AdapterResult.Card(o, offer.complete, price.bounds!!)
         }.filterNotNull()
         lastDebug = AdapterDebug(note = "offer list: ${cards.size} cards (${cards.count { it.complete }} complete)")
         return if (cards.isEmpty()) AdapterResult.NoOffer else AdapterResult.OfferList(cards)
@@ -167,6 +169,12 @@ class UberDriverAdapter(
 
         val multiStop = if (nodes.any { containsAny(it.text.lowercase(), config.multiStopKeywords) }) true else null
 
+        val kind = when {
+            acceptNodes.any { n -> config.matchKeywords.any { n.text.trim().equals(it, ignoreCase = true) } } -> com.offerpilot.core.model.OfferKind.MATCH
+            acceptNodes.isNotEmpty() -> com.offerpilot.core.model.OfferKind.ACCEPT
+            else -> null
+        }
+
         val offer = DeliveryOffer(
             offerId = localOfferId(payout, km, minutes, screen.timestamp),
             estimatedPayout = payout,
@@ -176,6 +184,7 @@ class UberDriverAdapter(
             destinationText = null,  // same as above
             multiStop = multiStop,
             dropoffCity = dropoffCity, // only the city, for the out-of-town alert
+            kind = kind,
 
             timestamp = screen.timestamp,
             source = screen.source,
@@ -256,6 +265,8 @@ data class UberAdapterConfig(
     val acceptKeywords: List<String> = listOf("Accept", "Match", "Tap to accept", "接受", "接单"),
     /** Text that only appears on an offer card (seen on a real device). Used with [acceptKeywords] to tell offers from history screens. */
     val offerMarkerKeywords: List<String> = listOf("including estimated tip", "estimated tip"),
+    /** Button text of Trip Radar offers (seen on a real device); any other accept keyword means a direct (Accept) offer. */
+    val matchKeywords: List<String> = listOf("Match"),
     /** Title of a screen that lists several offers at once ("Trip Radar" seen on a real device). */
     val offerListKeywords: List<String> = listOf("Trip Radar"),
     /** Judge each card of an offer list separately (needs screen positions). */

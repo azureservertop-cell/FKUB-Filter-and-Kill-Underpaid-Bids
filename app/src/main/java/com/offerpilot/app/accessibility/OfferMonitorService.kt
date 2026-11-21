@@ -348,7 +348,7 @@ class OfferMonitorService : AccessibilityService() {
         val key = "$price/$km/$min"
         if (!listHistoryKeys.add(key)) return
         if (listHistoryKeys.size > 100) listHistoryKeys.remove(listHistoryKeys.first())
-        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min)
+        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min, o.kind)
         workHandler.post { runCatching { com.offerpilot.app.history.OfferHistory.append(this, rec) } }
     }
 
@@ -377,7 +377,7 @@ class OfferMonitorService : AccessibilityService() {
         val key = "$price/$km/$min"
         if (key == lastHistoryKey) return
         lastHistoryKey = key
-        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min)
+        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min, o.kind)
         workHandler.post { runCatching { com.offerpilot.app.history.OfferHistory.append(this, rec) } }
     }
 

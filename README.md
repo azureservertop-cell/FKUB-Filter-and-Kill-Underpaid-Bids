@@ -99,7 +99,7 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 
 - **Status**: language, app to watch (picked from your installed apps), service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
-- **Stats**: a log of every offer FKUB read (time, shown price, km and minutes only), re-judged with your current rules: this week's share of offers below your own standard (vs last week), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
+- **Stats**: a log of every offer FKUB read (time, shown price, km, minutes and whether it was an Accept or Match offer), re-judged with your current rules: this week's share of offers below your own standard (vs last week), Accept vs Match comparison (count, median price, $/km, net hourly and share meeting your standard for direct offers vs Trip Radar offers), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
 - **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
 - **Debug** (developer only: tap the version number at the bottom of Status 7 times): target package, continuous capture (one tap to start, one to stop, zipped for sharing), single snapshots, capture list.
 
@@ -151,7 +151,7 @@ CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishe
 
 ## Tests
 
-`core/src/test` has 98 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
+`core/src/test` has 101 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
 
 Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 

@@ -2,6 +2,12 @@ package com.offerpilot.core.model
 
 import com.offerpilot.core.i18n.Lang
 
+/**
+ * How Uber offers the trip: ACCEPT = a popup sent to you ("Accept", often "Exclusive");
+ * MATCH = a Trip Radar offer shown to several drivers ("Match").
+ */
+enum class OfferKind { ACCEPT, MATCH }
+
 /** Where the offer data came from. */
 enum class OfferSource { ACCESSIBILITY, OCR, MOCK }
 
@@ -21,6 +27,8 @@ data class DeliveryOffer(
     val multiStop: Boolean? = null,
     /** City of the drop-off address only (no street), for the out-of-town alert. In memory only, never stored. */
     val dropoffCity: String? = null,
+    /** Accept vs Match, from the button text; null when no button was read. */
+    val kind: OfferKind? = null,
     val timestamp: Long,
     val source: OfferSource,
     /** Recognition confidence, 0.0–1.0. */

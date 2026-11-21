@@ -8,11 +8,15 @@ import com.offerpilot.core.rules.OfferEvaluator
 import java.util.Locale
 
 /** One offer seen on screen: only time, shown price, distance and duration are kept. */
-data class OfferRecord(val timeMs: Long, val price: Double, val km: Double, val minutes: Double) {
-    fun toCsv(): String = String.format(Locale.US, "%d,%.2f,%.2f,%.1f", timeMs, price, km, minutes)
+data class OfferRecord(
+    val timeMs: Long, val price: Double, val km: Double, val minutes: Double,
+    /** "ACCEPT" / "MATCH", or null when unknown (and in records saved before this column existed). */
+    val kind: com.offerpilot.core.model.OfferKind? = null,
+) {
+    fun toCsv(): String = String.format(Locale.US, "%d,%.2f,%.2f,%.1f,%s", timeMs, price, km, minutes, kind?.name ?: "")
 
     companion object {
-        const val CSV_HEADER = "time_ms,price,km,minutes"
+        const val CSV_HEADER = "time_ms,price,km,minutes,kind"
 
         fun fromCsv(line: String): OfferRecord? {
             val p = line.split(',')
@@ -22,10 +26,21 @@ data class OfferRecord(val timeMs: Long, val price: Double, val km: Double, val 
             val km = p[2].trim().toDoubleOrNull() ?: return null
             val min = p[3].trim().toDoubleOrNull() ?: return null
             if (price <= 0 || km <= 0 || min <= 0) return null
-            return OfferRecord(t, price, km, min)
+            val kind = p.getOrNull(4)?.trim()?.let { k -> com.offerpilot.core.model.OfferKind.entries.firstOrNull { it.name == k } }
+            return OfferRecord(t, price, km, min, kind)
         }
     }
 }
+
+/** One offer kind (Accept / Match) in the stats. */
+data class KindSummary(
+    val count: Int,
+    val medianPrice: Double?,
+    val medianPricePerKm: Double?,
+    val medianNetHourly: Double?,
+    /** Share of offers at or above the driver's own standard (not red). */
+    val meetsStandardShare: Double,
+)
 
 /** A record judged with the user's current rules. */
 data class JudgedRecord(val record: OfferRecord, val verdict: Verdict, val ratio: Double, val netHourly: Double)
@@ -43,6 +58,19 @@ data class OfferStatsSummary(
     val byHour: List<Map<Verdict, Int>>,
 ) {
     val total: Int get() = judged.size
+
+    /** Accept vs Match comparison; kinds with no records are left out. */
+    val byKind: Map<com.offerpilot.core.model.OfferKind, KindSummary>
+        get() = com.offerpilot.core.model.OfferKind.entries.mapNotNull { k ->
+            val js = judged.filter { it.record.kind == k }
+            if (js.isEmpty()) null else k to KindSummary(
+                count = js.size,
+                medianPrice = OfferStats.median(js.map { it.record.price }),
+                medianPricePerKm = OfferStats.median(js.map { it.record.price / it.record.km }),
+                medianNetHourly = OfferStats.median(js.map { it.netHourly }),
+                meetsStandardShare = js.count { it.verdict != Verdict.LOSS }.toDouble() / js.size,
+            )
+        }.toMap()
 
     companion object { const val NET_BIN = 5 }
 }

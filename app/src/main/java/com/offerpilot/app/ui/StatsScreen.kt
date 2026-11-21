@@ -120,6 +120,7 @@ fun StatsScreen(settings: AppSettings, repo: SettingsRepository, modifier: Modif
             )
         } else {
             Summary(stats)
+            Section(tr("Accept vs Match", "Accept 对比 Match")) { KindComparison(stats) }
             Section(tr("Verdicts", "档位分布")) { TierBars(stats, lang) }
             Section(tr("Price vs distance", "价格 vs 距离")) {
                 ScatterChart(stats)
@@ -211,6 +212,43 @@ private fun Summary(s: OfferStatsSummary) {
                 "中位数：${money(s.medianPrice)} · ${num(s.medianKm)} km · ${money(s.medianPricePerKm)}/km · 净 ${money(s.medianNetHourly)}/h",
             ),
             style = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+/** Direct offers (Accept) vs Trip Radar offers (Match), judged with the same rules. */
+@Composable
+private fun KindComparison(s: OfferStatsSummary) {
+    val k = s.byKind
+    if (k.isEmpty()) {
+        Text(
+            tr("No offers with a known type in this range yet. Offers logged from this version on record whether the button said Accept or Match.",
+                "这个时间段还没有带类型的记录。从这个版本开始，每单都会记录按钮是 Accept 还是 Match。"),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row {
+            Text("", Modifier.weight(1.1f))
+            listOf(tr("Offers", "单数"), tr("Median", "中位价"), "$/km", tr("Net/h", "净时薪"), tr("≥ yours", "达标率")).forEach {
+                Text(it, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        com.offerpilot.core.model.OfferKind.entries.forEach { kind ->
+            val v = k[kind] ?: return@forEach
+            Row {
+                Text(if (kind == com.offerpilot.core.model.OfferKind.MATCH) "Match" else "Accept", Modifier.weight(1.1f), style = MaterialTheme.typography.bodyMedium)
+                listOf(
+                    v.count.toString(), money(v.medianPrice), money(v.medianPricePerKm), money(v.medianNetHourly),
+                    "${(v.meetsStandardShare * 100).toInt()}%",
+                ).forEach { Text(it, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium) }
+            }
+        }
+        Text(
+            tr("Medians, judged with your current rules. “≥ yours” = share of offers at or above your own standard. A few dozen offers of each type are needed before the difference means much.",
+                "都是中位数，按你当前的规则计算。“达标率”= 达到你自己标准的订单占比。每种至少几十单，差别才有参考意义。"),
+            style = MaterialTheme.typography.bodySmall,
         )
     }
 }
