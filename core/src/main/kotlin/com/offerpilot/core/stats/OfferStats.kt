@@ -14,11 +14,13 @@ data class OfferRecord(
     val kind: com.offerpilot.core.model.OfferKind? = null,
     /** Shop orders: item count (shopping time is added when judging). */
     val shopItems: Int? = null,
+    val shopUnits: Int? = null,
 ) {
-    fun toCsv(): String = String.format(Locale.US, "%d,%.2f,%.2f,%.1f,%s,%s", timeMs, price, km, minutes, kind?.name ?: "", shopItems?.toString() ?: "")
+    fun toCsv(): String = String.format(Locale.US, "%d,%.2f,%.2f,%.1f,%s,%s,%s", timeMs, price, km, minutes, kind?.name ?: "",
+        shopItems?.toString() ?: "", shopUnits?.toString() ?: "")
 
     companion object {
-        const val CSV_HEADER = "time_ms,price,km,minutes,kind,shop_items"
+        const val CSV_HEADER = "time_ms,price,km,minutes,kind,shop_items,shop_units"
 
         fun fromCsv(line: String): OfferRecord? {
             val p = line.split(',')
@@ -30,7 +32,8 @@ data class OfferRecord(
             if (price <= 0 || km <= 0 || min <= 0) return null
             val kind = p.getOrNull(4)?.trim()?.let { k -> com.offerpilot.core.model.OfferKind.entries.firstOrNull { it.name == k } }
             val items = p.getOrNull(5)?.trim()?.toIntOrNull()
-            return OfferRecord(t, price, km, min, kind, items)
+            val units = p.getOrNull(6)?.trim()?.toIntOrNull()
+            return OfferRecord(t, price, km, min, kind, items, units)
         }
     }
 }
@@ -90,7 +93,7 @@ object OfferStats {
         val judged = records.mapNotNull { r ->
             val offer = DeliveryOffer(
                 offerId = "h${r.timeMs}", estimatedPayout = r.price, distanceKm = r.km, durationMinutes = r.minutes,
-                timestamp = 0L, source = OfferSource.MOCK, confidence = 1f, shopItems = r.shopItems,
+                timestamp = 0L, source = OfferSource.MOCK, confidence = 1f, shopItems = r.shopItems, shopUnits = r.shopUnits,
             )
             val e = ev.evaluate(offer)
             if (!e.isConclusive) null else JudgedRecord(r, e.verdict, e.ratio ?: 0.0, e.netHourly ?: 0.0)

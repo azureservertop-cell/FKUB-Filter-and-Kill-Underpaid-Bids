@@ -245,3 +245,72 @@ class ExclusiveAcceptPopupTest {
         assertTrue(OfferEvaluator().evaluate(o).isConclusive, "${o.issues} ${o.confidence}")
     }
 }
+
+/** Real (2026-11-22 16:34) cards. */
+class RealCards1122Test {
+    private fun screen(vararg lines: Pair<String, Box>) =
+        ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR)
+
+    @Test fun shop_items_and_units() {
+        val s = screen(
+            "Shop & Deliver (2)" to Box(215, 1255, 595, 1315),
+            "Exclusive" to Box(680, 1255, 875, 1315),
+            "CA$22.03" to Box(110, 1365, 665, 1465),
+            "including estimated tip" to Box(135, 1515, 630, 1575),
+            "22 items (30 units)" to Box(215, 1680, 670, 1745),
+            "1 hr 4 min (2.9 km) total" to Box(215, 1820, 785, 1885),
+            "No Frills (261 Richmond Street West)" to Box(215, 1970, 1105, 2030),
+            "Cecil St & Henry St, Toronto" to Box(215, 2075, 880, 2140),
+            "Heavy" to Box(255, 2245, 390, 2305),
+            "Accept" to Box(520, 2450, 690, 2515),
+        )
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(s)).offer
+        assertEquals(22.03, o.estimatedPayout); assertEquals(2.9, o.distanceKm); assertEquals(64.0, o.durationMinutes)
+        assertEquals(22, o.shopItems); assertEquals(30, o.shopUnits)
+        assertEquals("Toronto", o.dropoffCity)
+        assertEquals(com.offerpilot.core.model.OfferKind.ACCEPT, o.kind)
+        assertEquals(64.0 + 22 * 1.5 + 2, OfferEvaluator().withExtraTime(o).durationMinutes)
+        val units = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(shopCountUnits = true))
+        assertEquals(64.0 + 30 * 1.5 + 2, units.withExtraTime(o).durationMinutes)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+
+    private fun scarborough(pickup: String) = screen(
+        "North York" to Box(115, 500, 400, 550),
+        "Scarborough" to Box(850, 400, 1190, 450),
+        "Delivery" to Box(215, 1555, 390, 1615),
+        "Exclusive" to Box(470, 1555, 670, 1615),
+        "CA$27.52" to Box(110, 1665, 645, 1765),
+        "including estimated tip" to Box(135, 1815, 630, 1875),
+        "1 hr 10 min (29.0 km) total" to Box(215, 1985, 840, 2045),
+        pickup to Box(215, 2140, 975, 2205),
+        "Meadowglen Pl, Scarborough" to Box(215, 2245, 925, 2310),
+        "Accept" to Box(520, 2450, 690, 2515),
+    )
+
+    @Test fun scarborough_cjk_pickup() {
+        for (p in listOf("XiaoGuoHuBing 好兄弟小锅烀饼", "XiaoGuoHuBing 4FRHR", "XiaoGuoHuBing \$7 /1 5", "XiaoGuoHuBing 2 1 #")) {
+            val ad = UberDriverAdapter(); val o = assertIs<AdapterResult.Offer>(ad.extract(scarborough(p)), p).offer
+            assertEquals(27.52, o.estimatedPayout, p); assertEquals(29.0, o.distanceKm, p); assertEquals(70.0, o.durationMinutes, p)
+            assertEquals("Scarborough", o.dropoffCity, p)
+            assertTrue(OfferEvaluator().evaluate(o).isConclusive, p)
+        }
+    }
+}
+
+class AcceptHiddenByCountdownTest {
+    @Test fun repaired_ocr_without_accept_is_still_readable() {
+        val lines = listOf(
+            "Delivery" to Box(215, 1555, 390, 1615),
+            "CA$2752" to Box(110, 1665, 645, 1765), // decimal point lost
+            "including estimated tip" to Box(135, 1815, 630, 1875),
+            "1 hr 10 min (29.0 km) total" to Box(215, 1985, 840, 2045),
+            "Meadowglen Pl, Scarborough" to Box(215, 2245, 925, 2310),
+            // "Accept" not read: the countdown fill runs through it
+        )
+        val screen = ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR)
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen)).offer
+        assertEquals(27.52, o.estimatedPayout)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive, "${o.confidence} ${o.issues}")
+    }
+}

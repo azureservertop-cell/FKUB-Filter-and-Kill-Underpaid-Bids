@@ -38,6 +38,7 @@ class SettingsRepository(private val context: Context) {
         val shopTime = booleanPreferencesKey("shop_time_enabled")
         val pickupWait = doublePreferencesKey("pickup_wait_minutes")
         val shopPerItem = doublePreferencesKey("shop_minutes_per_item")
+        val shopUnits = booleanPreferencesKey("shop_count_units")
         val monitoring = booleanPreferencesKey("monitoring_enabled")
         val tts = booleanPreferencesKey("tts_enabled")
         val sound = booleanPreferencesKey("sound_enabled")
@@ -96,6 +97,7 @@ class SettingsRepository(private val context: Context) {
                 shopTimeEnabled = this[K.shopTime] ?: e.shopTimeEnabled,
                 pickupWaitMinutes = this[K.pickupWait] ?: e.pickupWaitMinutes,
                 shopMinutesPerItem = this[K.shopPerItem] ?: e.shopMinutesPerItem,
+                shopCountUnits = this[K.shopUnits] ?: e.shopCountUnits,
             ),
             language = this[K.language]?.let { runCatching { Lang.valueOf(it) }.getOrNull() } ?: d.language,
             fuel = FuelSettings(
@@ -164,6 +166,7 @@ class SettingsRepository(private val context: Context) {
             p[K.shopTime] = e.shopTimeEnabled
             p[K.pickupWait] = e.pickupWaitMinutes
             p[K.shopPerItem] = e.shopMinutesPerItem
+            p[K.shopUnits] = e.shopCountUnits
             p[K.monitoring] = n.monitoringEnabled
             p[K.tts] = n.ttsEnabled
             p[K.sound] = n.soundEnabled

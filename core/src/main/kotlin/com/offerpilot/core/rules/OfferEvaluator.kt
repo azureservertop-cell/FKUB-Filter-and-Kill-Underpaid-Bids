@@ -38,7 +38,7 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
 
     /** Shop orders: Uber's time doesn't include picking the items, so add item count × minutes per item. */
     fun withShopTime(offer: DeliveryOffer): DeliveryOffer {
-        val items = offer.shopItems ?: return offer
+        val items = (if (settings.shopCountUnits) offer.shopUnits ?: offer.shopItems else offer.shopItems) ?: return offer
         val min = offer.durationMinutes?.takeIf { it > 0 } ?: return offer
         if (!settings.shopTimeEnabled || settings.shopMinutesPerItem <= 0) return offer
         return offer.copy(durationMinutes = min + items * settings.shopMinutesPerItem)

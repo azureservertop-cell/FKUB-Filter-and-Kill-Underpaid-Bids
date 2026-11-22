@@ -61,7 +61,10 @@ object OfferMessages {
             appendLine(lang.t("Unknown", "无法判断") + ": " + result.unknownReasons.joinToString(sep) { it.description(lang) })
         }
         if (result.isConclusive) appendLine(lang.t("Time used includes your waiting / shopping time.", "计算用的时间已含等餐 / 购物时间。"))
-        offer.shopItems?.let { appendLine(lang.t("Shop order: $it items (shopping time added if enabled)", "Shop 单：$it 件商品（开启时已加上购物时间）")) }
+        offer.shopItems?.let { n ->
+            val u = offer.shopUnits?.let { lang.t(" ($it units)", "（共 $it 件）") } ?: ""
+            appendLine(lang.t("Shop order: $n items$u (shopping time added if enabled)", "Shop 单：$n 种商品$u（开启时已加上购物时间）"))
+        }
         if (result.belowMinimumOrder) appendLine(lang.t("Below your minimum order amount", "低于设置的最低订单金额"))
         result.vehicleCost?.let {
             appendLine(

@@ -136,6 +136,11 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             if (e.shopTimeEnabled) {
                 NumberField(tr("Minutes per item", "每件商品分钟数"), e.shopMinutesPerItem,
                     { v -> upd { it.copy(shopMinutesPerItem = v) } }, valid = { it in 0.0..10.0 })
+                SwitchRow(
+                    tr("Count units instead of items", "按总件数（units）算"), e.shopCountUnits, { v -> upd { it.copy(shopCountUnits = v) } },
+                    tr("“22 items (30 units)”: 22 different products, 30 in total. Off = 22 × minutes (each product is a separate search in the store). On = 30 ×.",
+                        "“22 items (30 units)”= 22 种商品，一共 30 件。关闭 = 按 22 算（每种商品要单独找一次）；开启 = 按 30 算。"),
+                )
             }
         }
 

@@ -31,6 +31,8 @@ data class DeliveryOffer(
     val kind: OfferKind? = null,
     /** Shop (grocery) orders: number of items to pick, when the card shows it. Null for normal deliveries. */
     val shopItems: Int? = null,
+    /** Shop orders: total units ("22 items (30 units)": 30), when the card shows it. */
+    val shopUnits: Int? = null,
     val timestamp: Long,
     val source: OfferSource,
     /** Recognition confidence, 0.0–1.0. */

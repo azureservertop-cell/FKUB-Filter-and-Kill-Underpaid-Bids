@@ -100,6 +100,18 @@ class UberDriverAdapter(
             }
         }
 
+        // Uber's card: price, then the "... total" trip line, then store and drop-off. A "$" below the trip line is part of a
+        // name or address (or OCR noise, e.g. Chinese characters read as "$7"), not a second price: drop it.
+        val tripLine = dist.firstOrNull { c ->
+            containsAny(c.node.text.lowercase(), config.totalKeywords) && dur.any { it.nodeIndex == c.nodeIndex }
+        }?.node
+        fun Cand.belowTrip(): Boolean? {
+            val t = tripLine?.bounds ?: return null
+            val b = node.bounds ?: return null
+            return b.top >= t.bottom
+        }
+        if (tripLine != null && money.any { it.belowTrip() == false }) money.removeAll { it.belowTrip() == true }
+
         val acceptNodes = nodes.filter { n -> config.acceptKeywords.any { n.text.trim().equals(it, ignoreCase = true) } }
         val hasAccept = acceptNodes.isNotEmpty()
         val allThree = money.isNotEmpty() && dist.isNotEmpty() && dur.isNotEmpty()
@@ -122,7 +134,9 @@ class UberDriverAdapter(
 
         val issues = mutableListOf<ParseIssue>()
         var confidence = if (screen.source == com.offerpilot.core.model.OfferSource.OCR) 0.75f else 0.95f
-        if (!hasAccept) confidence -= 0.10f
+        // The Accept button's countdown fill (white text over two greens) often stops OCR from reading "Accept";
+        // the "including estimated tip" label is just as clear a sign of an offer card.
+        if (!hasAccept && !hasMarker) confidence -= 0.10f
         if (repairedPrice) confidence -= 0.05f
         if (acceptNodes.size > 1) issues += ParseIssue.MULTIPLE_OFFERS
 
@@ -179,6 +193,8 @@ class UberDriverAdapter(
         val isShop = nodes.any { n -> containsAny(n.text.lowercase(), config.shopKeywords) }
         val shopItems = if (!isShop) null else nodes.firstNotNullOfOrNull { n -> ITEMS.find(n.text)?.groupValues?.get(1)?.toIntOrNull() }
             ?.takeIf { it in 1..300 }
+        val shopUnits = if (shopItems == null) null else nodes.firstNotNullOfOrNull { n -> UNITS.find(n.text)?.groupValues?.get(1)?.toIntOrNull() }
+            ?.takeIf { it in shopItems..999 }
 
         val offer = DeliveryOffer(
             offerId = localOfferId(payout, km, minutes, screen.timestamp),
@@ -191,10 +207,12 @@ class UberDriverAdapter(
             dropoffCity = dropoffCity, // only the city, for the out-of-town alert
             kind = kind,
             shopItems = shopItems,
+            shopUnits = shopUnits,
 
             timestamp = screen.timestamp,
             source = screen.source,
-            confidence = confidence.coerceIn(0f, 1f),
+            // Rounded: 0.75 - 0.05 - 0.10 in floats is 0.59999996, which fell just under the 0.6 limit.
+            confidence = (Math.round(confidence.coerceIn(0f, 1f) * 100) / 100f),
             issues = issues,
         )
         lastDebug = AdapterDebug(
@@ -250,6 +268,7 @@ class UberDriverAdapter(
 
     companion object {
         private val ITEMS = Regex("""(?i)\b(\d{1,3})\s*(?:items?|件)""")
+        private val UNITS = Regex("""(?i)\b(\d{1,3})\s*units?\b""")
 
         fun localOfferId(payout: Double?, km: Double?, min: Double?, ts: Long): String {
             val p = payout?.let { (it * 100).roundToLong() } ?: -1
