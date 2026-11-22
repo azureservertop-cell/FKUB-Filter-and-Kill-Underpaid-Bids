@@ -148,3 +148,30 @@ class OfferKindTest {
         assertEquals(0.0, k[com.offerpilot.core.model.OfferKind.ACCEPT]!!.meetsStandardShare)
     }
 }
+
+class ShopOrderTest {
+    private fun ocr(vararg lines: String) = ScreenText(UBER, lines.map { TextNode(it) }, 1_000L, OfferSource.OCR)
+
+    @Test fun items_add_shopping_time() {
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(ocr(
+            "Shop & Pay", "CA$18.40", "including estimated tip", "12 items", "25 min (6.0 km) total", "Accept",
+        ))).offer
+        assertEquals(12, o.shopItems)
+        val ev = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings())
+        assertEquals(43.0, ev.withShopTime(o).durationMinutes)
+        val off = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(shopTimeEnabled = false))
+        assertTrue(ev.evaluate(o).netHourly!! < off.evaluate(o).netHourly!!)
+    }
+
+    @Test fun normal_delivery_has_no_items() {
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(ocr(
+            "Delivery (2)", "CA$12.07", "including estimated tip", "28 min (8.7 km) total", "Match",
+        ))).offer
+        assertEquals(null, o.shopItems)
+    }
+
+    @Test fun csv_keeps_items() {
+        val r = com.offerpilot.core.stats.OfferRecord(1L, 18.4, 6.0, 25.0, null, 12)
+        assertEquals(r, com.offerpilot.core.stats.OfferRecord.fromCsv(r.toCsv()))
+    }
+}

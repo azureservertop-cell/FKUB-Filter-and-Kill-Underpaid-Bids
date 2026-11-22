@@ -175,6 +175,11 @@ class UberDriverAdapter(
             else -> null
         }
 
+        // Shop orders: "N items" on a card marked as shopping. Keywords not yet seen on a real device (pending).
+        val isShop = nodes.any { n -> containsAny(n.text.lowercase(), config.shopKeywords) }
+        val shopItems = if (!isShop) null else nodes.firstNotNullOfOrNull { n -> ITEMS.find(n.text)?.groupValues?.get(1)?.toIntOrNull() }
+            ?.takeIf { it in 1..300 }
+
         val offer = DeliveryOffer(
             offerId = localOfferId(payout, km, minutes, screen.timestamp),
             estimatedPayout = payout,
@@ -185,6 +190,7 @@ class UberDriverAdapter(
             multiStop = multiStop,
             dropoffCity = dropoffCity, // only the city, for the out-of-town alert
             kind = kind,
+            shopItems = shopItems,
 
             timestamp = screen.timestamp,
             source = screen.source,
@@ -243,6 +249,8 @@ class UberDriverAdapter(
     private fun containsAny(lower: String, keywords: List<String>) = keywords.any { lower.contains(it.lowercase()) }
 
     companion object {
+        private val ITEMS = Regex("""(?i)\b(\d{1,3})\s*(?:items?|件)""")
+
         fun localOfferId(payout: Double?, km: Double?, min: Double?, ts: Long): String {
             val p = payout?.let { (it * 100).roundToLong() } ?: -1
             val k = km?.let { (it * 10).roundToLong() } ?: -1
@@ -265,6 +273,8 @@ data class UberAdapterConfig(
     val acceptKeywords: List<String> = listOf("Accept", "Match", "Tap to accept", "接受", "接单"),
     /** Text that only appears on an offer card (seen on a real device). Used with [acceptKeywords] to tell offers from history screens. */
     val offerMarkerKeywords: List<String> = listOf("including estimated tip", "estimated tip"),
+    /** Pending: text that marks a Shop (grocery shopping) order, whose card shows an item count. */
+    val shopKeywords: List<String> = listOf("shop", "shopping", "grocery", "购物"),
     /** Button text of Trip Radar offers (seen on a real device); any other accept keyword means a direct (Accept) offer. */
     val matchKeywords: List<String> = listOf("Match"),
     /** Title of a screen that lists several offers at once ("Trip Radar" seen on a real device). */

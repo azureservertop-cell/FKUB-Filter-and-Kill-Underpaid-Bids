@@ -12,11 +12,13 @@ data class OfferRecord(
     val timeMs: Long, val price: Double, val km: Double, val minutes: Double,
     /** "ACCEPT" / "MATCH", or null when unknown (and in records saved before this column existed). */
     val kind: com.offerpilot.core.model.OfferKind? = null,
+    /** Shop orders: item count (shopping time is added when judging). */
+    val shopItems: Int? = null,
 ) {
-    fun toCsv(): String = String.format(Locale.US, "%d,%.2f,%.2f,%.1f,%s", timeMs, price, km, minutes, kind?.name ?: "")
+    fun toCsv(): String = String.format(Locale.US, "%d,%.2f,%.2f,%.1f,%s,%s", timeMs, price, km, minutes, kind?.name ?: "", shopItems?.toString() ?: "")
 
     companion object {
-        const val CSV_HEADER = "time_ms,price,km,minutes,kind"
+        const val CSV_HEADER = "time_ms,price,km,minutes,kind,shop_items"
 
         fun fromCsv(line: String): OfferRecord? {
             val p = line.split(',')
@@ -27,7 +29,8 @@ data class OfferRecord(
             val min = p[3].trim().toDoubleOrNull() ?: return null
             if (price <= 0 || km <= 0 || min <= 0) return null
             val kind = p.getOrNull(4)?.trim()?.let { k -> com.offerpilot.core.model.OfferKind.entries.firstOrNull { it.name == k } }
-            return OfferRecord(t, price, km, min, kind)
+            val items = p.getOrNull(5)?.trim()?.toIntOrNull()
+            return OfferRecord(t, price, km, min, kind, items)
         }
     }
 }
@@ -87,7 +90,7 @@ object OfferStats {
         val judged = records.mapNotNull { r ->
             val offer = DeliveryOffer(
                 offerId = "h${r.timeMs}", estimatedPayout = r.price, distanceKm = r.km, durationMinutes = r.minutes,
-                timestamp = 0L, source = OfferSource.MOCK, confidence = 1f,
+                timestamp = 0L, source = OfferSource.MOCK, confidence = 1f, shopItems = r.shopItems,
             )
             val e = ev.evaluate(offer)
             if (!e.isConclusive) null else JudgedRecord(r, e.verdict, e.ratio ?: 0.0, e.netHourly ?: 0.0)

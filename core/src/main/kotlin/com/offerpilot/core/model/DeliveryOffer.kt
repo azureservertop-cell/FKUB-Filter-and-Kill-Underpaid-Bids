@@ -29,6 +29,8 @@ data class DeliveryOffer(
     val dropoffCity: String? = null,
     /** Accept vs Match, from the button text; null when no button was read. */
     val kind: OfferKind? = null,
+    /** Shop (grocery) orders: number of items to pick, when the card shows it. Null for normal deliveries. */
+    val shopItems: Int? = null,
     val timestamp: Long,
     val source: OfferSource,
     /** Recognition confidence, 0.0–1.0. */

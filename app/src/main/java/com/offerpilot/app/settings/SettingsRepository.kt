@@ -35,6 +35,8 @@ class SettingsRepository(private val context: Context) {
         val outOfTown = booleanPreferencesKey("out_of_town_alert")
         val returnTrip = booleanPreferencesKey("out_of_town_return_trip")
         val returnMultiplier = doublePreferencesKey("return_distance_multiplier")
+        val shopTime = booleanPreferencesKey("shop_time_enabled")
+        val shopPerItem = doublePreferencesKey("shop_minutes_per_item")
         val monitoring = booleanPreferencesKey("monitoring_enabled")
         val tts = booleanPreferencesKey("tts_enabled")
         val sound = booleanPreferencesKey("sound_enabled")
@@ -88,6 +90,8 @@ class SettingsRepository(private val context: Context) {
                 outOfTownAlert = this[K.outOfTown] ?: e.outOfTownAlert,
                 outOfTownReturnTrip = this[K.returnTrip] ?: e.outOfTownReturnTrip,
                 returnDistanceMultiplier = this[K.returnMultiplier] ?: e.returnDistanceMultiplier,
+                shopTimeEnabled = this[K.shopTime] ?: e.shopTimeEnabled,
+                shopMinutesPerItem = this[K.shopPerItem] ?: e.shopMinutesPerItem,
             ),
             language = this[K.language]?.let { runCatching { Lang.valueOf(it) }.getOrNull() } ?: d.language,
             fuel = FuelSettings(
@@ -151,6 +155,8 @@ class SettingsRepository(private val context: Context) {
             p[K.outOfTown] = e.outOfTownAlert
             p[K.returnTrip] = e.outOfTownReturnTrip
             p[K.returnMultiplier] = e.returnDistanceMultiplier
+            p[K.shopTime] = e.shopTimeEnabled
+            p[K.shopPerItem] = e.shopMinutesPerItem
             p[K.monitoring] = n.monitoringEnabled
             p[K.tts] = n.ttsEnabled
             p[K.sound] = n.soundEnabled

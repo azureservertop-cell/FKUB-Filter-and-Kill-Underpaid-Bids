@@ -60,6 +60,7 @@ object OfferMessages {
         } else {
             appendLine(lang.t("Unknown", "无法判断") + ": " + result.unknownReasons.joinToString(sep) { it.description(lang) })
         }
+        offer.shopItems?.let { appendLine(lang.t("Shop order: $it items (shopping time added if enabled)", "Shop 单：$it 件商品（开启时已加上购物时间）")) }
         if (result.belowMinimumOrder) appendLine(lang.t("Below your minimum order amount", "低于设置的最低订单金额"))
         result.vehicleCost?.let {
             appendLine(

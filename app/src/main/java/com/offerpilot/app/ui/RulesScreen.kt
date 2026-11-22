@@ -120,6 +120,18 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             }
         }
 
+        Section(tr("Shop orders", "Shop 购物单")) {
+            SwitchRow(
+                tr("Add shopping time", "加上购物时间"), e.shopTimeEnabled, { v -> upd { it.copy(shopTimeEnabled = v) } },
+                tr("Uber's time for a Shop order doesn't include picking the items. When the card shows “N items”, N × the minutes below are added before judging.",
+                    "Uber 给 Shop 单的时间不含挑商品的时间。卡片上显示“N items”时，判断前会加上 N × 下面的分钟数。"),
+            )
+            if (e.shopTimeEnabled) {
+                NumberField(tr("Minutes per item", "每件商品分钟数"), e.shopMinutesPerItem,
+                    { v -> upd { it.copy(shopMinutesPerItem = v) } }, valid = { it in 0.0..10.0 })
+            }
+        }
+
         Section(tr("Out-of-town offers", "跨城提醒")) {
             SwitchRow(
                 tr("Out-of-town alert", "跨城提醒"), e.outOfTownAlert, { v -> upd { it.copy(outOfTownAlert = v) } },
