@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 
 /** Tests for the PRD 3.1 simple rule mode (max(km×0.8, min×0.5)). The default net-hourly mode is covered by NetHourlyEvaluatorTest. */
 class OfferEvaluatorTest {
-    private val simple = EvaluatorSettings(mode = RuleMode.PER_KM_PER_MINUTE, tipFreeShare = 1.0)
+    private val simple = EvaluatorSettings(pickupWaitMinutes = 0.0, mode = RuleMode.PER_KM_PER_MINUTE, tipFreeShare = 1.0)
     private val ev = OfferEvaluator(simple)
     private fun near(expected: Double, actual: Double?, eps: Double = 0.005) =
         assertTrue(actual != null && kotlin.math.abs(expected - actual) < eps, "expected $expected but was $actual")

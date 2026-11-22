@@ -17,7 +17,7 @@ class OfferStatsTest {
     )
 
     @Test fun counts_medians_and_hours() {
-        val s = OfferStats.compute(records, EvaluatorSettings()) { t -> ((t / 3_600_000L) % 24).toInt() }
+        val s = OfferStats.compute(records, EvaluatorSettings(pickupWaitMinutes = 0.0)) { t -> ((t / 3_600_000L) % 24).toInt() }
         assertEquals(4, s.total)
         assertEquals(3, s.countByVerdict[Verdict.LOSS])
         assertEquals(1, s.countByVerdict[Verdict.GREAT])
@@ -29,7 +29,7 @@ class OfferStatsTest {
     }
 
     @Test fun thresholds_are_applied_retroactively() {
-        val strict = OfferStats.compute(records, EvaluatorSettings(targetNetHourly = 40.0)) { 0 }
+        val strict = OfferStats.compute(records, EvaluatorSettings(pickupWaitMinutes = 0.0, targetNetHourly = 40.0)) { 0 }
         assertEquals(4, strict.countByVerdict[Verdict.LOSS])
     }
 

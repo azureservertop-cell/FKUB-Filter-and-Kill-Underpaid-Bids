@@ -69,7 +69,7 @@ missing / ambiguous / implausible / low confidence / stale → unknown (no glow,
 
 85%, 1.2 and 1.5 are all adjustable. FKUB has no shared or "recommended" standard: the starting numbers are examples, the app asks you to enter your own, and each driver decides by their own numbers. The Rules tab also lists, for your car, the minimum price Uber has to show for each tier at different times and distances.
 
-Example numbers, not a recommendation (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $17.95/h → $0.299/min; 85% tip-free):
+Example numbers, not a recommendation, without the 2-min waiting time (10 L/100 km, $1.36/L, $10/100 km maintenance → $0.236/km; $17.95/h → $0.299/min; 85% tip-free):
 
 | Offer | Shown · distance · time | Tip-free | Required | Ratio | Est. net hourly | Verdict |
 |---|---|---|---|---|---|---|
@@ -83,6 +83,8 @@ Under **Advanced** you can switch to the simple rule from the original spec, `ma
 These are your personal filter rules, not Uber's pay standard. Minimum-earnings guarantees are calculated per pay period and are not included in single offers.
 
 ## Alerts
+
+**Waiting for food** (Rules tab, default 2 min, 0 turns it off): added to every offer's time, since Uber's estimate doesn't include waiting at the restaurant.
 
 **Shop orders** (on by default, Rules tab): Uber's time for a Shop order doesn't include picking the items, so when the card shows "N items", N × 1.5 min (adjustable) is added to the time before judging. Verified on a real "Shop & Deliver" card ("8 items (8 units)"; the item count is used). If the item count isn't read, the offer is judged on Uber's time alone.
 
@@ -153,7 +155,7 @@ CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishe
 
 ## Tests
 
-`core/src/test` has 107 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
+`core/src/test` has 109 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
 
 Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 

@@ -120,6 +120,13 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
             }
         }
 
+        Section(tr("Waiting for food", "等餐时间")) {
+            NumberField(tr("Minutes added to every offer", "每单加上的分钟数"), e.pickupWaitMinutes,
+                { v -> upd { it.copy(pickupWaitMinutes = v) } }, valid = { it in 0.0..60.0 })
+            Text(tr("Uber's time doesn't include waiting at the restaurant. Set 0 to turn it off.", "Uber 给的时间不含在餐厅等餐的时间。设为 0 即关闭。"),
+                style = MaterialTheme.typography.bodySmall)
+        }
+
         Section(tr("Shop orders", "Shop 购物单")) {
             SwitchRow(
                 tr("Add shopping time", "加上购物时间"), e.shopTimeEnabled, { v -> upd { it.copy(shopTimeEnabled = v) } },

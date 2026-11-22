@@ -60,7 +60,7 @@ class OfferTrackerTest {
     }
 
     @Test fun pipeline_messages_match_prd_examples() {
-        val ev = OfferEvaluator()
+        val ev = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(pickupWaitMinutes = 0.0))
         val o1 = offer(9.0, 29.92, 42.0); val r1 = ev.evaluate(o1)
         assertEquals("净 $1/h", OfferMessages.overlay(o1, r1, Lang.ZH))
         assertEquals("9块，30公里，不达标。", OfferMessages.speech(o1, r1, Lang.ZH))
@@ -81,7 +81,7 @@ class OfferTrackerTest {
     }
 
     @Test fun end_to_end_pipeline_other_app_clears() {
-        val p = com.offerpilot.core.OfferPipeline(UberDriverAdapter(), OfferEvaluator())
+        val p = com.offerpilot.core.OfferPipeline(UberDriverAdapter(), OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(pickupWaitMinutes = 0.0)))
         val show = p.process(screen("$9.00", "42 min (29.92 km)", "Accept", ts = 0), 0)
         assertIs<com.offerpilot.core.PipelineOutput.Show>(show)
         // switching to another app → withdraw the verdict immediately

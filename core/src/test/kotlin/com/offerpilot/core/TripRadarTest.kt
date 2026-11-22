@@ -197,6 +197,22 @@ class RealShopCardTest {
         assertEquals("London", o.dropoffCity)
         assertEquals(com.offerpilot.core.model.OfferKind.MATCH, o.kind)
         val r = OfferEvaluator().evaluate(o)
-        assertEquals(10, r.netHourly!!.toInt()) // 61 min with 8 × 1.5 min of shopping
+        assertEquals(9, r.netHourly!!.toInt()) // 63 min: 49 + 8 × 1.5 min shopping + 2 min waiting
+    }
+}
+
+class PickupWaitTest {
+    private fun offer(min: Double) = com.offerpilot.core.model.DeliveryOffer(
+        offerId = "w", estimatedPayout = 10.0, distanceKm = 5.0, durationMinutes = min, timestamp = 0L, source = OfferSource.OCR, confidence = 0.9f,
+    )
+
+    @Test fun default_two_minutes_added() {
+        assertEquals(22.0, OfferEvaluator().withExtraTime(offer(20.0)).durationMinutes)
+        assertEquals(20.0, OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(pickupWaitMinutes = 0.0)).withExtraTime(offer(20.0)).durationMinutes)
+        assertEquals(25.0, OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(pickupWaitMinutes = 5.0)).withExtraTime(offer(20.0)).durationMinutes)
+    }
+
+    @Test fun zero_time_stays_implausible() {
+        assertTrue(!OfferEvaluator().evaluate(offer(0.0)).isConclusive)
     }
 }

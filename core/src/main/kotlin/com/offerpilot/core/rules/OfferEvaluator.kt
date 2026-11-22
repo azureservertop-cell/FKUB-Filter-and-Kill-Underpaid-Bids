@@ -26,12 +26,20 @@ class OfferEvaluator(private val settings: EvaluatorSettings = EvaluatorSettings
         offer: DeliveryOffer,
         nowMs: Long = offer.timestamp,
         returnTrip: ReturnTrip? = null,
-    ): EvaluationResult = withShopTime(offer).let { o -> evaluateWith(o, nowMs, returnTrip ?: outOfTownReturnTrip(o)) }
+    ): EvaluationResult = withExtraTime(offer).let { o -> evaluateWith(o, nowMs, returnTrip ?: outOfTownReturnTrip(o)) }
+
+    /** Time Uber's estimate leaves out: waiting for the food, and shopping for Shop orders. */
+    fun withExtraTime(offer: DeliveryOffer): DeliveryOffer {
+        val o = withShopTime(offer)
+        val min = o.durationMinutes ?: return o
+        if (settings.pickupWaitMinutes <= 0 || min <= 0) return o // a zero/negative time stays implausible
+        return o.copy(durationMinutes = min + settings.pickupWaitMinutes)
+    }
 
     /** Shop orders: Uber's time doesn't include picking the items, so add item count × minutes per item. */
     fun withShopTime(offer: DeliveryOffer): DeliveryOffer {
         val items = offer.shopItems ?: return offer
-        val min = offer.durationMinutes ?: return offer
+        val min = offer.durationMinutes?.takeIf { it > 0 } ?: return offer
         if (!settings.shopTimeEnabled || settings.shopMinutesPerItem <= 0) return offer
         return offer.copy(durationMinutes = min + items * settings.shopMinutesPerItem)
     }

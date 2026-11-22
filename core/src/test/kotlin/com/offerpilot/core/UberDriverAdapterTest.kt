@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 /** All screen text below is synthetic, used to check the conservative strategy; it is not the real Uber UI. */
 class UberDriverAdapterTest {
     private val adapter = UberDriverAdapter()
-    private val ev = OfferEvaluator()
+    private val ev = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(pickupWaitMinutes = 0.0))
 
     @Test fun simple_offer_parsed() {
         val r = adapter.extract(screen("Delivery", "$9.00", "42 min (29.92 km) total", "Accept"))

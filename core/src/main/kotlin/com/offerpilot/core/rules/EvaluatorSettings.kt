@@ -55,6 +55,8 @@ data class EvaluatorSettings(
      * [returnDistanceMultiplier] (1.5 = the trip plus half of it again for the way back). Off by default.
      */
     val outOfTownReturnTrip: Boolean = false,
+    /** Waiting at the restaurant, added to every offer's time (Uber's time doesn't include it). */
+    val pickupWaitMinutes: Double = 2.0,
     /** Shop orders: add item count × [shopMinutesPerItem] minutes of shopping to the trip time. */
     val shopTimeEnabled: Boolean = true,
     val shopMinutesPerItem: Double = 1.5,
