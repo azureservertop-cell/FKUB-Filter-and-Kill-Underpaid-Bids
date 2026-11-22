@@ -277,7 +277,8 @@ class OfferMonitorService : AccessibilityService() {
         if (lastOcrAtFor.size > 50) lastOcrAtFor.clear()
         val gen = frameGeneration
         val started = SystemClock.elapsedRealtime()
-        ocr.recognize(window.bounds, window.id, pkg) { screen ->
+        val (bandTop, bandBottom) = ocrBand(settings)
+        ocr.recognize(window.bounds, window.id, pkg, bandTop, bandBottom) { screen ->
             ocrInFlight = false
             val s = settings
             var found = false
@@ -449,6 +450,25 @@ class OfferMonitorService : AccessibilityService() {
             if (s.vibrationEnabled) mainHandler.post { runCatching { haptics.play(out.result.verdict) } }
         }
         actionHandler.onEvaluated(out.offer, out.result) // no-op: v1 never performs any action
+    }
+
+    private fun screenHeight(): Int = runCatching {
+        getSystemService(android.view.WindowManager::class.java).maximumWindowMetrics.bounds.height()
+    }.getOrDefault(resources.displayMetrics.heightPixels)
+
+    /** The OCR reading area in screen pixels, from the user's percentages. */
+    private fun ocrBand(s: AppSettings): Pair<Int, Int> {
+        val h = screenHeight()
+        val top = s.ocrTopPercent.coerceIn(0, 95)
+        val bottom = s.ocrBottomPercent.coerceIn(top + 5, 100)
+        return h * top / 100 to (if (bottom >= 100) Int.MAX_VALUE else h * bottom / 100)
+    }
+
+    /** Settings page: outline the reading area on the real screen for a few seconds. */
+    fun showOcrBand(topPercent: Int, bottomPercent: Int) {
+        if (!::overlay.isInitialized) return
+        val h = screenHeight()
+        overlay.showBand(h * topPercent / 100, h * bottomPercent / 100)
     }
 
     /** Called from the mock page: previews a mock offer with the real overlay / speech / vibration. */

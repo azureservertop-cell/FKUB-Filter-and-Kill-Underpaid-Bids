@@ -53,6 +53,8 @@ class SettingsRepository(private val context: Context) {
         val logUnreadable = booleanPreferencesKey("log_unreadable")
         val history = booleanPreferencesKey("history_enabled")
         val homeCities = stringPreferencesKey("home_cities")
+        val ocrTop = intPreferencesKey("ocr_top_percent")
+        val ocrBottom = intPreferencesKey("ocr_bottom_percent")
         val developer = booleanPreferencesKey("developer_mode")
         val consent = booleanPreferencesKey("consent_v1")
         val rulesConfirmed = booleanPreferencesKey("rules_confirmed")
@@ -129,6 +131,8 @@ class SettingsRepository(private val context: Context) {
             logUnreadable = this[K.logUnreadable] ?: d.logUnreadable,
             historyEnabled = this[K.history] ?: d.historyEnabled,
             homeCities = this[K.homeCities] ?: d.homeCities,
+            ocrTopPercent = this[K.ocrTop] ?: d.ocrTopPercent,
+            ocrBottomPercent = this[K.ocrBottom] ?: d.ocrBottomPercent,
             developerMode = this[K.developer] ?: d.developerMode,
             consentAccepted = this[K.consent] ?: d.consentAccepted,
             rulesConfirmed = this[K.rulesConfirmed] ?: d.rulesConfirmed,
@@ -178,6 +182,8 @@ class SettingsRepository(private val context: Context) {
             p[K.logUnreadable] = n.logUnreadable
             p[K.history] = n.historyEnabled
             p[K.homeCities] = n.homeCities
+            p[K.ocrTop] = n.ocrTopPercent
+            p[K.ocrBottom] = n.ocrBottomPercent
             p[K.developer] = n.developerMode
             p[K.consent] = n.consentAccepted
             p[K.rulesConfirmed] = n.rulesConfirmed

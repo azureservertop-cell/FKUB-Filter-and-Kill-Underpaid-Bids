@@ -99,7 +99,7 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 
 ## App tabs
 
-- **Status**: language, app to watch (picked from your installed apps), service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
+- **Status**: language, app to watch (picked from your installed apps), OCR reading area (e.g. only the lower part of the screen, shown on the real screen while you adjust it), service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
 - **Stats**: a log of every offer FKUB read (time, shown price, km, minutes and whether it was an Accept or Match offer), re-judged with your current rules: this week's share of offers below your own standard (vs last week), Accept vs Match comparison (count, median price, $/km, net hourly and share meeting your standard for direct offers vs Trip Radar offers), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
 - **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.

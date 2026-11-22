@@ -85,6 +85,9 @@ data class AppSettings(
     val historyEnabled: Boolean = true,
     /** Your cities for the out-of-town alert, comma or semicolon separated. Blank = the fuel-price city. */
     val homeCities: String = "",
+    /** OCR reading area, as % of screen height from the top. Default: the whole screen. */
+    val ocrTopPercent: Int = 0,
+    val ocrBottomPercent: Int = 100,
     /** Apps to watch, picked by the user from the installed-app list. Empty = nothing is read. */
     val targetPackages: Set<String> = emptySet(),
 )

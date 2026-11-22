@@ -123,6 +123,7 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                 tr("Screenshot recognition (OCR)", "截图识别（OCR）"), s.ocrEnabled, { v -> upd { it.copy(ocrEnabled = v) } },
                 tr("Uber hides the offer text from accessibility, so it's read from a screenshot on the device. Screenshots are never saved or uploaded", "Uber 弹出订单时会隐藏文字，需要截图后在本机识别。截图不保存、不上传"),
             )
+            if (s.ocrEnabled) OcrBandSetting(s, repo)
             SwitchRow(
                 tr("Show the pill in the middle of the screen", "悬浮提示放在屏幕中间"), s.overlayPosition == OverlayPosition.CENTER,
                 { v -> upd { it.copy(overlayPosition = if (v) OverlayPosition.CENTER else OverlayPosition.TOP) } },
@@ -176,4 +177,33 @@ private fun VersionFooter(s: AppSettings, repo: SettingsRepository) {
             }
         },
     )
+}
+
+/** Reading area for OCR: only this horizontal band of the screen is recognised. */
+@androidx.compose.runtime.Composable
+private fun OcrBandSetting(s: AppSettings, repo: SettingsRepository) {
+    val scope = rememberCoroutineScope()
+    var top by androidx.compose.runtime.remember(s.ocrTopPercent) { androidx.compose.runtime.mutableFloatStateOf(s.ocrTopPercent.toFloat()) }
+    var bottom by androidx.compose.runtime.remember(s.ocrBottomPercent) { androidx.compose.runtime.mutableFloatStateOf(s.ocrBottomPercent.toFloat()) }
+    fun save(t: Int, b: Int) = scope.launch { repo.update { it.copy(ocrTopPercent = t, ocrBottomPercent = b) } }
+    fun show(t: Int, b: Int) = com.offerpilot.app.accessibility.OfferMonitorService.instance?.showOcrBand(t, b)
+    Column {
+        Text(tr("Reading area: ${top.roundToInt()}% – ${bottom.roundToInt()}% of the screen (top to bottom)", "读取范围：屏幕从上往下 ${top.roundToInt()}% – ${bottom.roundToInt()}%"))
+        Text(tr("Top edge", "上边界"), style = MaterialTheme.typography.bodySmall)
+        Slider(value = top, valueRange = 0f..90f, onValueChange = { top = minOf(it, bottom - 10f) },
+            onValueChangeFinished = { save(top.roundToInt(), bottom.roundToInt()); show(top.roundToInt(), bottom.roundToInt()) })
+        Text(tr("Bottom edge", "下边界"), style = MaterialTheme.typography.bodySmall)
+        Slider(value = bottom, valueRange = 10f..100f, onValueChange = { bottom = maxOf(it, top + 10f) },
+            onValueChangeFinished = { save(top.roundToInt(), bottom.roundToInt()); show(top.roundToInt(), bottom.roundToInt()) })
+        Row {
+            TextButton(onClick = { save(0, 100); show(0, 100) }) { Text(tr("Whole screen", "全屏")) }
+            TextButton(onClick = { save(40, 100); show(40, 100) }) { Text(tr("Lower part", "下半部分")) }
+            TextButton(onClick = { show(top.roundToInt(), bottom.roundToInt()) }) { Text(tr("Show on screen", "在屏幕上显示")) }
+        }
+        Text(
+            tr("Smaller is faster and ignores map labels. Offer cards and Match cards sit in the lower part; the Trip Radar list starts near the top, so cards above the area won't get a badge.",
+                "范围越小识别越快，也不会读到地图上的文字。弹出的订单和 Match 卡片都在下半部分；Trip Radar 列表从屏幕上方开始，范围以外的卡片不会显示标记。"),
+            style = MaterialTheme.typography.bodySmall,
+        )
+    }
 }

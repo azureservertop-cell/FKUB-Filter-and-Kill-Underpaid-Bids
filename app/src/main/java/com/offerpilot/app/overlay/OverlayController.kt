@@ -141,6 +141,35 @@ class OverlayController(private val service: AccessibilityService) {
         this.y = y
     }
 
+    private var bandView: android.view.View? = null
+    private val hideBand = Runnable { bandView?.let { runCatching { wm.removeView(it) } }; bandView = null }
+
+    /** Dims everything outside the OCR reading area for 3 s so the user can see what will be read. */
+    fun showBand(top: Int, bottom: Int) {
+        main.post {
+            main.removeCallbacks(hideBand)
+            hideBand.run()
+            val dim = android.graphics.Paint().apply { color = Color.parseColor("#99000000") }
+            val line = android.graphics.Paint().apply {
+                color = Color.parseColor("#FF1E88E5"); style = android.graphics.Paint.Style.STROKE
+                strokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 3f, service.resources.displayMetrics)
+            }
+            val v = object : android.view.View(service) {
+                override fun onDraw(c: android.graphics.Canvas) {
+                    val loc = IntArray(2).also { getLocationOnScreen(it) }
+                    val t = (top - loc[1]).toFloat()
+                    val b = (bottom - loc[1]).toFloat()
+                    c.drawRect(0f, 0f, width.toFloat(), t, dim)
+                    c.drawRect(0f, b, width.toFloat(), height.toFloat(), dim)
+                    c.drawRect(0f, t, width.toFloat(), b, line)
+                }
+            }
+            runCatching { wm.addView(v, glowParams()) }.onFailure { return@post }
+            bandView = v
+            main.postDelayed(hideBand, 3000)
+        }
+    }
+
     private var badge: TextView? = null
 
     /** Small badge in the top-left corner during continuous capture (not touchable). */

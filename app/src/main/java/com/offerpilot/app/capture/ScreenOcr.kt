@@ -41,7 +41,15 @@ class ScreenOcr(
      * (otherwise text like "$5 / 3km" would be read as offer content) and other apps' text are excluded.
      * Older versions take a full screenshot and crop it to the Uber window.
      */
-    fun recognize(region: Rect, windowId: Int, packageName: String, onResult: (ScreenText?) -> Unit) {
+    /**
+     * [bandTop]..[bandBottom]: the part of the screen (screen y, pixels) the user chose to read; everything else is cut
+     * off before recognition, which is faster and keeps map labels out.
+     */
+    fun recognize(
+        region: Rect, windowId: Int, packageName: String,
+        bandTop: Int = 0, bandBottom: Int = Int.MAX_VALUE,
+        onResult: (ScreenText?) -> Unit,
+    ) {
         val takenAt = System.currentTimeMillis()
         try {
             val windowOnly = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && windowId >= 0
@@ -64,6 +72,14 @@ class ScreenOcr(
                         } else {
                             r = Rect(region).apply { if (!intersect(0, 0, src.width, src.height)) set(0, 0, src.width, src.height) }
                             ox = 0; oy = 0
+                        }
+                        // Keep only the reading area the user set (bitmap y = screen y - oy)
+                        r.top = maxOf(r.top, bandTop - oy)
+                        r.bottom = minOf(r.bottom, if (bandBottom == Int.MAX_VALUE) r.bottom else bandBottom - oy)
+                        if (r.height() <= 0) {
+                            recycle(full, null)
+                            onResult(ScreenText(packageName, emptyList(), takenAt, OfferSource.OCR))
+                            return
                         }
                         val c = if (r.width() == src.width && r.height() == src.height) src
                         else Bitmap.createBitmap(src, r.left, r.top, r.width(), r.height())
@@ -97,7 +113,7 @@ class ScreenOcr(
                 override fun onFailure(errorCode: Int) {
                     Log.w(TAG, "screenshot failed: $errorCode (windowOnly=$windowOnly)")
                     // Window screenshot failed (e.g. an unreadable overlay window) → fall back to full screenshot + crop
-                    if (windowOnly) recognize(region, -1, packageName, onResult) else onResult(null)
+                    if (windowOnly) recognize(region, -1, packageName, bandTop, bandBottom, onResult) else onResult(null)
                 }
             }
             if (windowOnly) service.takeScreenshotOfWindow(windowId, executor, callback)
