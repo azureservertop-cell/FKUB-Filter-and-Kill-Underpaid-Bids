@@ -175,3 +175,28 @@ class ShopOrderTest {
         assertEquals(r, com.offerpilot.core.stats.OfferRecord.fromCsv(r.toCsv()))
     }
 }
+
+/** Real Shop card (2026-11-21, London ON): "Shop & Deliver" / "8 items (8 units)" / "49 min (10.3 km) total" / "Match". */
+class RealShopCardTest {
+    @Test fun shop_and_deliver() {
+        val lines = listOf(
+            "London" to Box(80, 860, 290, 915),
+            "Shop & Deliver" to Box(215, 1440, 525, 1500),
+            "CA$15.08" to Box(110, 1550, 665, 1660),
+            "including estimated tip" to Box(135, 1705, 630, 1765),
+            "8 items (8 units)" to Box(215, 1875, 615, 1935),
+            "49 min (10.3 km) total" to Box(215, 2010, 740, 2075),
+            "Walmart (330 Clarke Rd)" to Box(215, 2160, 810, 2225),
+            "Central Ave & St George St, London" to Box(215, 2270, 1060, 2335),
+            "Match" to Box(540, 2460, 675, 2525),
+        )
+        val screen = ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR)
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen)).offer
+        assertEquals(15.08, o.estimatedPayout); assertEquals(10.3, o.distanceKm); assertEquals(49.0, o.durationMinutes)
+        assertEquals(8, o.shopItems)
+        assertEquals("London", o.dropoffCity)
+        assertEquals(com.offerpilot.core.model.OfferKind.MATCH, o.kind)
+        val r = OfferEvaluator().evaluate(o)
+        assertEquals(10, r.netHourly!!.toInt()) // 61 min with 8 × 1.5 min of shopping
+    }
+}

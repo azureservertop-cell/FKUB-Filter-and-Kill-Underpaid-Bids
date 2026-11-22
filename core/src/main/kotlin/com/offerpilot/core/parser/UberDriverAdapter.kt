@@ -175,7 +175,7 @@ class UberDriverAdapter(
             else -> null
         }
 
-        // Shop orders: "N items" on a card marked as shopping. Keywords not yet seen on a real device (pending).
+        // Shop orders: "Shop & Deliver" label plus "N items (M units)"; the item count is used.
         val isShop = nodes.any { n -> containsAny(n.text.lowercase(), config.shopKeywords) }
         val shopItems = if (!isShop) null else nodes.firstNotNullOfOrNull { n -> ITEMS.find(n.text)?.groupValues?.get(1)?.toIntOrNull() }
             ?.takeIf { it in 1..300 }
@@ -273,7 +273,7 @@ data class UberAdapterConfig(
     val acceptKeywords: List<String> = listOf("Accept", "Match", "Tap to accept", "接受", "接单"),
     /** Text that only appears on an offer card (seen on a real device). Used with [acceptKeywords] to tell offers from history screens. */
     val offerMarkerKeywords: List<String> = listOf("including estimated tip", "estimated tip"),
-    /** Pending: text that marks a Shop (grocery shopping) order, whose card shows an item count. */
+    /** Text that marks a Shop order ("Shop & Deliver" seen on a real device, 2026-11-21); its card shows "8 items (8 units)". */
     val shopKeywords: List<String> = listOf("shop", "shopping", "grocery", "购物"),
     /** Button text of Trip Radar offers (seen on a real device); any other accept keyword means a direct (Accept) offer. */
     val matchKeywords: List<String> = listOf("Match"),
