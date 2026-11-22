@@ -251,8 +251,10 @@ class OfferMonitorService : AccessibilityService() {
         // (e.g. the "Trip Radar" chip) can stay readable while the offer card itself is hidden.
         if (app != null && read.screen.nodes.size <= SPARSE_NODES) return app
         // While Uber is online (an Uber window such as the floating bubble exists), a large unreadable window is most likely the offer card shown over another app.
-        // If several OCR passes on the same window find no offer, stop capturing it so other apps' overlays aren't OCR'd repeatedly.
-        return read.opaqueWindows.firstOrNull { (opaqueMisses[it.id] ?: 0) < OPAQUE_MAX_MISSES }
+        // If several OCR passes on the same window find no offer, it is only OCR'd every [OCR_IDLE_INTERVAL_MS] (the
+        // caller's back-off). It used to be dropped for good, which missed an offer card that later appeared in a window
+        // seen before (e.g. over the recent-apps screen or a photo picker).
+        return read.opaqueWindows.firstOrNull()
     }
 
     /** Unreadable window id → number of consecutive OCR passes that found no offer. */

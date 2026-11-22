@@ -314,3 +314,40 @@ class AcceptHiddenByCountdownTest {
         assertTrue(OfferEvaluator().evaluate(o).isConclusive, "${o.confidence} ${o.issues}")
     }
 }
+
+class HourReadsTest {
+    private fun card(vararg trip: Pair<String, Box>) = ScreenText(UBER, (listOf(
+        "Delivery (2)" to Box(215, 1555, 460, 1615),
+        "CA$29.09" to Box(110, 1665, 670, 1765),
+        "including estimated tip" to Box(135, 1815, 630, 1875),
+    ) + trip + listOf(
+        "Swatow Restaurant" to Box(215, 2135, 685, 2200),
+        "Sheppard Ave E, Scarborough" to Box(215, 2245, 930, 2310),
+        "Accept" to Box(520, 2450, 690, 2515),
+    )).map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR)
+
+    @Test fun hours_only() {
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(card("1 hr (14.1 km) total" to Box(215, 1985, 655, 2045)))).offer
+        assertEquals(60.0, o.durationMinutes); assertEquals(14.1, o.distanceKm)
+    }
+
+    @Test fun ocr_split_hours_piece() {
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(card(
+            "1 hr" to Box(215, 1985, 320, 2045),
+            "10 min (25.8 km) total" to Box(345, 1985, 835, 2045),
+        ))).offer
+        assertEquals(70.0, o.durationMinutes); assertEquals(25.8, o.distanceKm)
+    }
+
+    @Test fun tracker_keeps_longer_time_and_city() {
+        val t = com.offerpilot.core.tracking.OfferTracker()
+        val full = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(card("1 hr 10 min (25.8 km) total" to Box(215, 1985, 835, 2045))))
+        val short = full.copy(offer = full.offer.copy(durationMinutes = 10.0, dropoffCity = null))
+        assertIs<com.offerpilot.core.tracking.TrackerEvent.NewOffer>(t.onFrame(short, 0))
+        val e = assertIs<com.offerpilot.core.tracking.TrackerEvent.NewOffer>(t.onFrame(full, 100))
+        assertTrue(e.suppressAnnouncement || e.offer.durationMinutes == 70.0)
+        assertEquals(70.0, t.activeOffer!!.durationMinutes); assertEquals("Scarborough", t.activeOffer!!.dropoffCity)
+        assertEquals(com.offerpilot.core.tracking.TrackerEvent.Unchanged, t.onFrame(short, 200))
+        assertEquals(70.0, t.activeOffer!!.durationMinutes)
+    }
+}

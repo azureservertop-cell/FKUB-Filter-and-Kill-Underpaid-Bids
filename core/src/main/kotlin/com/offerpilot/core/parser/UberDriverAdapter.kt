@@ -1,6 +1,7 @@
 package com.offerpilot.core.parser
 
 import com.offerpilot.core.model.AdapterDebug
+import com.offerpilot.core.model.Box
 import com.offerpilot.core.model.DeliveryOffer
 import com.offerpilot.core.model.ParseIssue
 import com.offerpilot.core.model.ScreenText
@@ -78,7 +79,7 @@ class UberDriverAdapter(
 
     private fun extractSingle(screen: ScreenText): AdapterResult {
         var repairedPrice = false
-        val nodes = screen.nodes.filter { it.text.isNotBlank() }.map { n ->
+        val nodes = joinSplitHours(screen.nodes.filter { it.text.isNotBlank() }).map { n ->
             if (screen.source != com.offerpilot.core.model.OfferSource.OCR) return@map n
             val (t1, priceFixed) = OfferParser.repairOcrPriceLine(n.text)
             val (t, tripFixed) = OfferParser.repairOcrTripLine(t1)
@@ -266,7 +267,32 @@ class UberDriverAdapter(
 
     private fun containsAny(lower: String, keywords: List<String>) = keywords.any { lower.contains(it.lowercase()) }
 
+    /**
+     * OCR sometimes splits "1 hr 10 min (25.8 km) total" into "1 hr" and "10 min (25.8 km) total". The second part alone
+     * reads as a 10-minute trip, so put a lone hours piece back in front of the text to its right on the same row.
+     */
+    private fun joinSplitHours(nodes: List<TextNode>): List<TextNode> {
+        val hours = nodes.filter { n -> n.bounds != null && LONE_HOURS.matches(n.text) }
+        if (hours.isEmpty()) return nodes
+        val out = nodes.toMutableList()
+        for (h in hours) {
+            val hb = h.bounds!!
+            val right = out.filter { n ->
+                val b = n.bounds ?: return@filter false
+                n !== h && b.left >= hb.right - hb.height / 2 && b.left - hb.right <= hb.height * 2 &&
+                    minOf(b.bottom, hb.bottom) - maxOf(b.top, hb.top) >= minOf(b.height, hb.height) / 2
+            }.minByOrNull { it.bounds!!.left } ?: continue
+            val rb = right.bounds!!
+            val i = out.indexOf(right)
+            out[i] = right.copy(text = h.text.trim() + " " + right.text,
+                bounds = Box(hb.left, minOf(hb.top, rb.top), rb.right, maxOf(hb.bottom, rb.bottom)))
+            out.remove(h)
+        }
+        return out
+    }
+
     companion object {
+        private val LONE_HOURS = Regex("""^\s*\d{1,2}\s?(?:h|hr|hrs|hour|hours)\s*$""", RegexOption.IGNORE_CASE)
         private val ITEMS = Regex("""(?i)\b(\d{1,3})\s*(?:items?|件)""")
         private val UNITS = Regex("""(?i)\b(\d{1,3})\s*units?\b""")
 

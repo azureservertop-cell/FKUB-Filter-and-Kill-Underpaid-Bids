@@ -35,7 +35,7 @@ class OfferTracker(
                 return TrackerEvent.OfferGone(prev)
             }
             is AdapterResult.Offer -> {
-                val offer = result.offer
+                val offer = steady(result.offer)
                 val key = dedupKey(offer)
                 if (!result.complete) {
                     // While a complete offer is shown, an occasional incomplete frame doesn't change the verdict
@@ -44,7 +44,15 @@ class OfferTracker(
                     if (now - since < settleMs) return TrackerEvent.PendingIncomplete
                 }
                 incompleteSince = if (result.complete) null else incompleteSince
-                if (key == currentKey) return TrackerEvent.Unchanged
+                if (key == currentKey) {
+                    // Same numbers, but this read also caught the drop-off city: show it
+                    val cur = current
+                    if (cur != null && cur.dropoffCity == null && offer.dropoffCity != null) {
+                        current = offer
+                        return TrackerEvent.NewOffer(offer, replaced = cur, suppressAnnouncement = true)
+                    }
+                    return TrackerEvent.Unchanged
+                }
                 val replaced = current
                 current = offer
                 currentKey = key
@@ -54,6 +62,20 @@ class OfferTracker(
                 return TrackerEvent.NewOffer(offer, replaced = replaced, suppressAnnouncement = duplicate)
             }
         }
+    }
+
+    /**
+     * One card read twice can come out differently when OCR drops part of a line ("1 hr 10 min" read as "10 min").
+     * Uber doesn't change a card's time while it is shown, so for the same price and distance keep the longer time
+     * (the dropped part only ever makes it shorter) and any city already read, instead of flipping between results.
+     */
+    private fun steady(o: DeliveryOffer): DeliveryOffer {
+        val cur = current ?: return o
+        if (cur.estimatedPayout == null || cur.distanceKm == null) return o
+        if (o.estimatedPayout != cur.estimatedPayout || o.distanceKm != cur.distanceKm) return o
+        val longer = listOfNotNull(cur.durationMinutes, o.durationMinutes).maxOrNull()
+        return o.copy(durationMinutes = longer, dropoffCity = o.dropoffCity ?: cur.dropoffCity,
+            shopItems = o.shopItems ?: cur.shopItems, shopUnits = o.shopUnits ?: cur.shopUnits, kind = o.kind ?: cur.kind)
     }
 
     fun reset() {
