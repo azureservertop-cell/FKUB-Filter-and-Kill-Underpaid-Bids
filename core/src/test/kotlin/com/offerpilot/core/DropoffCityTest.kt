@@ -134,3 +134,30 @@ class OutOfTownReturnTripTest {
         assertEquals(20.0, rt.km, 1e-9)
     }
 }
+
+/** Real (2026-11-21): map label fragments at the screen edge beside the card were read into the address ("str"). */
+class DropoffEdgeNoiseTest {
+    @Test fun edge_fragments_ignored() {
+        val lines = listOf(
+            "Delivery" to Box(215, 1460, 390, 1520),
+            "CA$4.06" to Box(110, 1590, 610, 1700),
+            "including estimated tip" to Box(135, 1750, 630, 1810),
+            "15 min (4.3 km) total" to Box(215, 1915, 705, 1980),
+            "Hakka Culture And Momo Hub (1295" to Box(215, 2050, 1095, 2115),
+            "Highbury Ave N)" to Box(215, 2130, 615, 2195),
+            "ck" to Box(0, 2170, 55, 2225),
+            "Goldwick Cres & Lancaster St," to Box(215, 2210, 935, 2275),
+            "str" to Box(0, 2250, 60, 2300),
+            "London" to Box(215, 2290, 400, 2350),
+            "Match" to Box(540, 2460, 675, 2525),
+        )
+        val screen = ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR)
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(screen)).offer
+        assertEquals("London", o.dropoffCity)
+        assertNull(DropoffCity.outOfTown(o.dropoffCity, "London"))
+    }
+
+    @Test fun lowercase_fragment_is_not_a_city() {
+        assertNull(DropoffCity.cityOf("Lancaster St, str"))
+    }
+}

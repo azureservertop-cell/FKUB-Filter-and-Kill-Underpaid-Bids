@@ -37,7 +37,13 @@ object DropoffCity {
         val tb = trip.bounds
         val selected = if (tb != null && nodes.all { it.bounds != null }) {
             val bottomLimit = accept?.bounds?.top ?: (Int.MAX_VALUE - 10)
-            nodes.filter { n -> n.bounds!!.top >= tb.bottom - 5 && n.bounds!!.bottom <= bottomLimit + 5 && n !== trip && n !== accept }
+            // Address lines are indented like the trip line. Map labels peeking out beside the card at the screen edge
+            // (real device, 2026-11-21: a fragment read as "str") start far to the left and are ignored.
+            val minLeft = tb.left - 2 * tb.height
+            nodes.filter { n ->
+                n.bounds!!.top >= tb.bottom - 5 && n.bounds!!.bottom <= bottomLimit + 5 && n.bounds!!.left >= minLeft &&
+                    n !== trip && n !== accept
+            }
                 .sortedWith(compareBy({ it.bounds!!.top }, { it.bounds!!.left }))
         } else {
             val end = if (acceptIndex > tripIndex) acceptIndex else nodes.size
@@ -64,8 +70,8 @@ object DropoffCity {
         val parts = address.replace(POSTAL, "").split(',').map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
         if (parts.size < 2) return null
         val tail = parts.drop(1).lastOrNull { normalize(it) !in PROVINCES } ?: return null
-        // A city name has letters and no house number
-        if (tail.none { it.isLetter() } || tail.any { it.isDigit() }) return null
+        // A city name has letters, no house number, and starts with a capital (Uber writes "London", "St Thomas")
+        if (tail.count { it.isLetter() } < 3 || tail.any { it.isDigit() } || !tail.first().isUpperCase()) return null
         return tail
     }
 
