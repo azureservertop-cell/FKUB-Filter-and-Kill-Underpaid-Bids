@@ -208,7 +208,16 @@ class OfferMonitorService : AccessibilityService() {
             val adapted = adapter.extract(read.screen)
             val nodeOfferComplete = (adapted is AdapterResult.Offer && adapted.complete) ||
                 (adapted is AdapterResult.OfferList && adapted.cards.any { it.complete })
-            val region = if (!nodeOfferComplete && s.ocrEnabled) hiddenOfferRegion(read) else null
+            val candidate = if (!nodeOfferComplete && s.ocrEnabled) hiddenOfferRegion(read) else null
+            if (candidate != null && !ocrAllowed(candidate.id)) {
+                // Still Uber's hidden screen, but OCR'd it recently with no offer: look again when the back-off ends.
+                // Don't treat this as a normal frame: that used to drop the OCR in flight, and if Uber sent no further
+                // events (it often doesn't while an offer is up), a popup that appeared now was never read.
+                val since = SystemClock.elapsedRealtime() - (lastOcrAtFor[candidate.id] ?: 0L)
+                scheduleRead((OCR_IDLE_INTERVAL_MS - since).coerceAtLeast(READ_INTERVAL_MS))
+                return
+            }
+            val region = candidate
             if (region == null) {
                 frameGeneration++
                 MonitorState.update { it.copy(lastAdapterNote = adapter.lastDebug?.note) }
@@ -226,6 +235,7 @@ class OfferMonitorService : AccessibilityService() {
 
     /**
      * Decides whether an offer popup is probably on screen but unreadable via nodes; returns the screen region to OCR, or null.
+     * The caller applies the OCR back-off ([ocrAllowed]).
      *
      * Real-device snapshots (Android 15): when Uber shows an offer in the foreground, its whole UI layer disappears from the accessibility tree, leaving only the map.
      * When Uber is in the background it draws its own (non-application) windows on top of other apps.
@@ -235,11 +245,11 @@ class OfferMonitorService : AccessibilityService() {
         val bigOverlay = read.windows.firstOrNull {
             !it.isApplication && it.bounds.width() >= dm.widthPixels / 2 && it.bounds.height() >= dm.heightPixels / 6
         }
-        if (bigOverlay != null) return bigOverlay.takeIf { ocrAllowed(it.id) }
+        if (bigOverlay != null) return bigOverlay
         val app = read.windows.firstOrNull { it.isApplication }
         // Uber's own screen with its text hidden. Besides a fully empty tree, allow a sparse one: on the map, a few labels
         // (e.g. the "Trip Radar" chip) can stay readable while the offer card itself is hidden.
-        if (app != null && read.screen.nodes.size <= SPARSE_NODES) return app.takeIf { ocrAllowed(it.id) }
+        if (app != null && read.screen.nodes.size <= SPARSE_NODES) return app
         // While Uber is online (an Uber window such as the floating bubble exists), a large unreadable window is most likely the offer card shown over another app.
         // If several OCR passes on the same window find no offer, stop capturing it so other apps' overlays aren't OCR'd repeatedly.
         return read.opaqueWindows.firstOrNull { (opaqueMisses[it.id] ?: 0) < OPAQUE_MAX_MISSES }

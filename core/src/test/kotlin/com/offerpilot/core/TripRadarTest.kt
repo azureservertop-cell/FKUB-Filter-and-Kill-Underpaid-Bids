@@ -216,3 +216,32 @@ class PickupWaitTest {
         assertTrue(!OfferEvaluator().evaluate(offer(0.0)).isConclusive)
     }
 }
+
+/** Real (2026-11-21 21:57): exclusive Accept popup over the map that showed nothing. */
+class ExclusiveAcceptPopupTest {
+    @Test fun pizza_pizza_popup() {
+        val lines = listOf(
+            "21:57" to Box(45, 30, 140, 75),
+            "London" to Box(985, 115, 1160, 165),
+            "International" to Box(925, 175, 1216, 225),
+            "Airport (YXU)" to Box(920, 235, 1216, 285),
+            "RONLEIGH" to Box(680, 640, 990, 690),
+            "ARGYLE PARK" to Box(250, 1000, 675, 1050),
+            "FAIRMONT" to Box(200, 1370, 520, 1420),
+            "Delivery (2)" to Box(215, 1555, 460, 1615),
+            "Exclusive" to Box(540, 1555, 740, 1615),
+            "CA$7.05" to Box(110, 1665, 585, 1765),
+            "including estimated tip" to Box(135, 1815, 630, 1875),
+            "27 min (4.0 km) total" to Box(215, 1985, 710, 2045),
+            "Pizza Pizza (1836 Dundas St.)" to Box(215, 2135, 925, 2200),
+            "First St & Oxford St E, London" to Box(215, 2245, 925, 2310),
+            "Accept" to Box(520, 2450, 690, 2515),
+        )
+        val screen = ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR)
+        val r = UberDriverAdapter().extract(screen)
+        val o = assertIs<AdapterResult.Offer>(r, "${UberDriverAdapter().also { it.extract(screen) }.lastDebug}").offer
+        assertEquals(7.05, o.estimatedPayout); assertEquals(4.0, o.distanceKm); assertEquals(27.0, o.durationMinutes)
+        assertEquals("London", o.dropoffCity)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive, "${o.issues} ${o.confidence}")
+    }
+}
