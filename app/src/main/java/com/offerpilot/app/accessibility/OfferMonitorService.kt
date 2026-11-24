@@ -209,6 +209,8 @@ class OfferMonitorService : AccessibilityService() {
             val nodeOfferComplete = (adapted is AdapterResult.Offer && adapted.complete) ||
                 (adapted is AdapterResult.OfferList && adapted.cards.any { it.complete })
             val candidate = if (!nodeOfferComplete && s.ocrEnabled) hiddenOfferRegion(read) else null
+            trace("frame nodes=${read.screen.nodes.size} windows=${read.windows.size} opaque=${read.opaqueWindows.size} " +
+                "adapter=${adapted::class.simpleName} candidate=${candidate?.id} allowed=${candidate?.let { ocrAllowed(it.id) }} inFlight=$ocrInFlight")
             if (candidate != null && !ocrAllowed(candidate.id)) {
                 // Still Uber's hidden screen, but OCR'd it recently with no offer: look again when the back-off ends.
                 // Don't treat this as a normal frame: that used to drop the OCR in flight, and if Uber sent no further
@@ -322,6 +324,7 @@ class OfferMonitorService : AccessibilityService() {
                     if (opaqueMisses.size > 50) opaqueMisses.clear()
                 }
                 // The popup closed while OCR was running (a normal node frame arrived) → discard, so no stale verdict is shown
+                if (screen == null || gen != frameGeneration) trace("ocr window=${window.id} dropped: screen=${screen != null} genChanged=${gen != frameGeneration}")
                 if (screen != null && gen == frameGeneration && s.monitoringEnabled) {
                     lastOcrLines = screen.nodes.map { it.text }
                     lastOcrLinesAt = System.currentTimeMillis()
@@ -333,6 +336,8 @@ class OfferMonitorService : AccessibilityService() {
                     // verdict blink off: while an offer is shown, only the second miss in a row hides it.
                     val blip = adapted is AdapterResult.NoOffer && pipeline.tracker.activeOffer != null && ocrNoOfferStreak == 0
                     ocrNoOfferStreak = if (adapted is AdapterResult.NoOffer) ocrNoOfferStreak + 1 else 0
+                    trace("ocr window=${window.id} lines=${screen.nodes.size} ms=${SystemClock.elapsedRealtime() - started} " +
+                        "result=${adapted::class.simpleName} blip=$blip note=${adapter.lastDebug?.note} text=${screen.nodes.joinToString(" | ") { it.text }}")
                     if (adapted is AdapterResult.OfferList && lastScrollAt > started) scheduleRead(LIST_SETTLE_MS)
                     else if (!blip) dispatch(adapted, s, now)
                     Log.d(TAG, "ocr frame in ${SystemClock.elapsedRealtime() - started}ms, ${screen.nodes.size} lines")
@@ -536,6 +541,15 @@ class OfferMonitorService : AccessibilityService() {
 
     // ---------------- Continuous capture ----------------
 
+    /** While capturing, one line per decision (frames, OCR passes) in trace.txt, to see why an offer was missed. */
+    private fun trace(msg: String) {
+        val dir = recordDir ?: return
+        runCatching {
+            val t = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US).format(java.util.Date())
+            java.io.File(dir, "trace.txt").appendText("$t $msg\n")
+        }
+    }
+
     @Volatile private var recording = false
 
     /** Called from the UI: start continuous capture. Saves a snapshot each time the target app's text changes (at least 1 s apart). */
@@ -558,9 +572,10 @@ class OfferMonitorService : AccessibilityService() {
             recordDir = null
             recording = false
             overlay.hideBadge()
-            val zip = runCatching { if (recordCount > 0) SnapshotStore.zipSession(dir) else null }
+            val hasTrace = java.io.File(dir, "trace.txt").exists()
+            val zip = runCatching { if (recordCount > 0 || hasTrace) SnapshotStore.zipSession(dir) else null }
                 .onFailure { Log.w(TAG, "zip failed", it) }.getOrNull()
-            if (recordCount == 0) dir.deleteRecursively()
+            if (recordCount == 0 && !hasTrace) dir.deleteRecursively()
             MonitorState.update { it.copy(recording = null, lastSnapshotPath = zip?.absolutePath ?: it.lastSnapshotPath) }
         }
     }

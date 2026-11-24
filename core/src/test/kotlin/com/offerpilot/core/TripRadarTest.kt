@@ -421,3 +421,23 @@ class MapLabelCityTest {
         assertEquals("London", o.dropoffCity)
     }
 }
+
+class LcboCardTest {
+    @Test fun lcbo_one_item() {
+        val lines = listOf(
+            "Shop & Deliver" to Box(215, 1285, 525, 1345), "Exclusive" to Box(610, 1285, 805, 1345),
+            "CA$12.01" to Box(110, 1400, 650, 1500), "including estimated tip" to Box(135, 1550, 630, 1610),
+            "Must verify ID" to Box(215, 1675, 515, 1735),
+            "1 item (1 unit)" to Box(215, 1845, 550, 1905),
+            "34 min (14.5 km) total" to Box(215, 1985, 740, 2045),
+            "LCBO (1073 Wellington Road South)" to Box(215, 2130, 1090, 2195),
+            "Bexhill Dr & Hillhead Rd, London" to Box(215, 2240, 990, 2305),
+            "Accept" to Box(520, 2450, 690, 2515),
+        )
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(
+            ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR))).offer
+        assertEquals(12.01, o.estimatedPayout); assertEquals(14.5, o.distanceKm); assertEquals(34.0, o.durationMinutes)
+        assertEquals(1, o.shopItems); assertEquals("London", o.dropoffCity)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+}
