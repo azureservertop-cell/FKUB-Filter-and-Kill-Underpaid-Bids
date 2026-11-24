@@ -122,7 +122,8 @@ object OfferParser {
         }
         val m = OCR_PRICE_LINE.matchEntire(line.trim()) ?: return line to false
         val prefix = m.groupValues[1]
-        val symbol = line.trim().substring(m.groups[2]!!.range.first - 1).first { it == '$' || it == 'S' || it == 's' }
+        // The symbol is in the part before the digits (there may be a space between: "CA$ 7")
+        val symbol = line.trim().substring(0, m.groups[2]!!.range.first).lastOrNull { it == '$' || it == 'S' || it == 's' } ?: return line to false
         if (symbol != '$' && prefix.isEmpty()) return line to false // a lone "S12" is not money
         val whole = m.groupValues[2]
         val cents = m.groupValues[3]

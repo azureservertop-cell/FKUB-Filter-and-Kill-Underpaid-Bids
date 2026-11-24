@@ -386,3 +386,22 @@ class RealCards1124Test {
         assertTrue(OfferEvaluator().evaluate(o).isConclusive)
     }
 }
+
+class WholeDollarPriceTest {
+    @Test fun ca7_no_cents() {
+        for (p in listOf("CA$7", "CAS7", "CA$ 7")) {
+            val lines = listOf(
+                "Delivery" to Box(215, 1555, 390, 1615), "Exclusive" to Box(470, 1555, 670, 1615),
+                p to Box(110, 1665, 430, 1765), "including estimated tip" to Box(135, 1815, 630, 1875),
+                "23 min (8.4 km) total" to Box(215, 1985, 715, 2045),
+                "Tahini's (London East)" to Box(215, 2135, 755, 2200),
+                "Maxwell Cres & Maxwell Crt, London" to Box(215, 2245, 1085, 2310),
+                "Accept" to Box(520, 2450, 690, 2515),
+            )
+            val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(
+                ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR)), p).offer
+            assertEquals(7.0, o.estimatedPayout, p)
+            assertTrue(OfferEvaluator().evaluate(o).isConclusive, "$p ${o.confidence} ${o.issues}")
+        }
+    }
+}

@@ -297,7 +297,20 @@ class OfferMonitorService : AccessibilityService() {
         val gen = frameGeneration
         val started = SystemClock.elapsedRealtime()
         val (bandTop, bandBottom) = ocrBand(settings)
-        ocr.recognize(window.bounds, window.id, pkg, bandTop, bandBottom) { screen ->
+        ocr.recognize(window.bounds, window.id, pkg, bandTop, bandBottom) { banded ->
+            // The card sits higher than the reading area (e.g. a single Trip Radar card near the top): the trip line was
+            // read but the price was cut off. Read the whole window once more instead of giving up.
+            val cutOff = banded != null && (bandTop > 0 || bandBottom != Int.MAX_VALUE) && runCatching {
+                (adapter.extract(banded) as? AdapterResult.Offer)?.offer?.issues?.contains(com.offerpilot.core.model.ParseIssue.PAYOUT_MISSING) == true
+            }.getOrDefault(false)
+            if (cutOff) ocr.recognize(window.bounds, window.id, pkg, 0, Int.MAX_VALUE) { full -> onOcr(window, gen, started, full ?: banded) }
+            else onOcr(window, gen, started, banded)
+        }
+    }
+
+    /** Worker thread (ML Kit callback). */
+    private fun onOcr(window: NodeReader.TargetWindow, gen: Long, started: Long, screen: com.offerpilot.core.model.ScreenText?) {
+        run {
             ocrInFlight = false
             val s = settings
             var found = false
