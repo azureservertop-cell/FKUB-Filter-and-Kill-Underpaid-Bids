@@ -49,7 +49,8 @@ object DropoffCity {
             val end = if (acceptIndex > tripIndex) acceptIndex else nodes.size
             nodes.subList(tripIndex + 1, end)
         }
-        val lines = selected.map { it.text.trim() }.filter { it.isNotEmpty() }
+        // Map labels are written in capitals ("COMMISSIONERS RD E"); Uber's addresses never are.
+        val lines = selected.map { it.text.trim() }.filter { it.isNotEmpty() && !allCaps(it) }
         if (lines.isEmpty()) return null
         // Join lines that wrap: a line ending with a comma, or with an unclosed "(", continues on the next line.
         val blocks = mutableListOf<String>()
@@ -69,11 +70,15 @@ object DropoffCity {
     fun cityOf(address: String): String? {
         val parts = address.replace(POSTAL, "").split(',').map { it.trim().trimEnd('.') }.filter { it.isNotEmpty() }
         if (parts.size < 2) return null
-        val tail = parts.drop(1).lastOrNull { normalize(it) !in PROVINCES } ?: return null
+        val tail = parts.drop(1).lastOrNull { normalize(it) !in PROVINCES }
+            // Drop capitals-only words OCR picked up from a map label next to the line ("London RD" → "London")
+            ?.split(' ')?.filterNot { allCaps(it) }?.joinToString(" ")?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         // A city name has letters, no house number, and starts with a capital (Uber writes "London", "St Thomas")
         if (tail.count { it.isLetter() } < 3 || tail.any { it.isDigit() } || !tail.first().isUpperCase()) return null
         return tail
     }
+
+    private fun allCaps(s: String): Boolean = s.count { it.isLetter() } >= 2 && s.none { it.isLowerCase() }
 
     /** Lowercase, "Saint"/"St." → "st", punctuation and extra spaces removed. */
     fun normalize(city: String): String = city.lowercase()

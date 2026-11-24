@@ -405,3 +405,19 @@ class WholeDollarPriceTest {
         }
     }
 }
+
+class MapLabelCityTest {
+    @Test fun caps_label_not_part_of_city() {
+        assertEquals("London", com.offerpilot.core.parser.DropoffCity.cityOf("Kipling Ave & Wellesley Cres, London RD"))
+        val lines = listOf(
+            "CA$9.08" to Box(110, 1630, 610, 1730), "including estimated tip" to Box(135, 1745, 630, 1805),
+            "21 min (3.9 km) total" to Box(215, 1935, 705, 1995),
+            "Rajdhani Sweets & Restaurant" to Box(215, 2070, 945, 2130), "(London)" to Box(215, 2150, 440, 2210),
+            "Kipling Ave & Wellesley Cres, London" to Box(215, 2240, 1100, 2300),
+            "ONERS RD E" to Box(800, 2600, 1090, 2660), // map label under the card; Accept not read (countdown)
+        )
+        val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(
+            ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR))).offer
+        assertEquals("London", o.dropoffCity)
+    }
+}

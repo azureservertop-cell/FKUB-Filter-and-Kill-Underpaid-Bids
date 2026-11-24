@@ -282,6 +282,7 @@ class OfferMonitorService : AccessibilityService() {
     private var ocrInFlight = false
     private var lastOcrAt = 0L
     private var frameGeneration = 0L
+    private var ocrNoOfferStreak = 0
     private var lastOcrLines: List<String> = emptyList()
     private var lastOcrLinesAt = 0L
 
@@ -328,8 +329,12 @@ class OfferMonitorService : AccessibilityService() {
                     MonitorState.update { it.copy(lastAdapterNote = "OCR: " + (adapter.lastDebug?.note ?: "")) }
                     val now = System.currentTimeMillis()
                     // The list scrolled while this screenshot was being read: positions are stale, read again instead
+                    // One OCR pass that misses the card (countdown animation, a half-drawn frame) shouldn't make the
+                    // verdict blink off: while an offer is shown, only the second miss in a row hides it.
+                    val blip = adapted is AdapterResult.NoOffer && pipeline.tracker.activeOffer != null && ocrNoOfferStreak == 0
+                    ocrNoOfferStreak = if (adapted is AdapterResult.NoOffer) ocrNoOfferStreak + 1 else 0
                     if (adapted is AdapterResult.OfferList && lastScrollAt > started) scheduleRead(LIST_SETTLE_MS)
-                    else dispatch(adapted, s, now)
+                    else if (!blip) dispatch(adapted, s, now)
                     Log.d(TAG, "ocr frame in ${SystemClock.elapsedRealtime() - started}ms, ${screen.nodes.size} lines")
                 }
             } catch (t: Throwable) {
