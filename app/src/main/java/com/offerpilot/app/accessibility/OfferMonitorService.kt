@@ -250,11 +250,15 @@ class OfferMonitorService : AccessibilityService() {
         // Uber's own screen with its text hidden. Besides a fully empty tree, allow a sparse one: on the map, a few labels
         // (e.g. the "Trip Radar" chip) can stay readable while the offer card itself is hidden.
         if (app != null && read.screen.nodes.size <= SPARSE_NODES) return app
-        // While Uber is online (an Uber window such as the floating bubble exists), a large unreadable window is most likely the offer card shown over another app.
-        // If several OCR passes on the same window find no offer, it is only OCR'd every [OCR_IDLE_INTERVAL_MS] (the
-        // caller's back-off). It used to be dropped for good, which missed an offer card that later appeared in a window
-        // seen before (e.g. over the recent-apps screen or a photo picker).
-        return read.opaqueWindows.firstOrNull()
+        // Otherwise take turns between:
+        //  - large unreadable windows: while Uber is online (an Uber window such as the floating bubble exists), most
+        //    likely the offer card shown over another app (recent-apps screen, photo picker...);
+        //  - Uber's own screen even with more readable text: a zoomed-in map exposes many street / area labels, which
+        //    made the tree look "not hidden" so the card on top of it was never read.
+        // Windows that are allowed now come first, then the one read longest ago; each one that keeps showing no offer
+        // is only read every [OCR_IDLE_INTERVAL_MS] (the caller's back-off). A wrong window can't block the right one.
+        val candidates = read.opaqueWindows + listOfNotNull(app)
+        return candidates.sortedWith(compareBy({ !ocrAllowed(it.id) }, { lastOcrAtFor[it.id] ?: 0L })).firstOrNull()
     }
 
     /** Unreadable window id → number of consecutive OCR passes that found no offer. */

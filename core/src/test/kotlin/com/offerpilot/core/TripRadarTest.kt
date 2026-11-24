@@ -351,3 +351,38 @@ class HourReadsTest {
         assertEquals(70.0, t.activeOffer!!.durationMinutes)
     }
 }
+
+/** Real (2026-11-24) cards the user reported as not recognised: the parser reads them; the cause was capture. */
+class RealCards1124Test {
+    private fun read(vararg lines: Pair<String, Box>) = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(
+        ScreenText(UBER, lines.map { (t, b) -> TextNode(t, bounds = b) }, 1_000L, OfferSource.OCR))).offer
+
+    @Test fun dairy_queen_wrapped_pickup() {
+        val o = read(
+            "CEDAR HOLLOW" to Box(740, 820, 1216, 870),
+            "Delivery" to Box(215, 1460, 390, 1520), "Exclusive" to Box(470, 1460, 670, 1520),
+            "CA$8.08" to Box(110, 1570, 610, 1670), "including estimated tip" to Box(135, 1720, 630, 1780),
+            "23 min (11.3 km) total" to Box(215, 1890, 730, 1950),
+            "Dairy Queen (1820 Adelaide St N," to Box(215, 2030, 1015, 2090), "Unit 3E)" to Box(215, 2105, 410, 2165),
+            "Pebblecreek Walk & Sawgrass Link," to Box(215, 2180, 1065, 2240), "London" to Box(215, 2260, 400, 2320),
+            "Accept" to Box(520, 2450, 690, 2515),
+        )
+        assertEquals(8.08, o.estimatedPayout); assertEquals(11.3, o.distanceKm); assertEquals(23.0, o.durationMinutes)
+        assertEquals("London", o.dropoffCity); assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+
+    @Test fun burger_king_match() {
+        val o = read(
+            "London" to Box(220, 725, 430, 775),
+            "Delivery" to Box(215, 1525, 390, 1585),
+            "CA$7.04" to Box(110, 1635, 590, 1735), "including estimated tip" to Box(135, 1790, 630, 1850),
+            "20 min (11.7 km) total" to Box(215, 1955, 735, 2015),
+            "Burger King (1295 Oxford Street" to Box(215, 2095, 985, 2155), "East)" to Box(215, 2175, 340, 2235),
+            "Regent St & The Pky, London" to Box(215, 2265, 910, 2325),
+            "Match" to Box(540, 2460, 675, 2525),
+        )
+        assertEquals(7.04, o.estimatedPayout); assertEquals(20.0, o.durationMinutes)
+        assertEquals(com.offerpilot.core.model.OfferKind.MATCH, o.kind); assertEquals("London", o.dropoffCity)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+}
