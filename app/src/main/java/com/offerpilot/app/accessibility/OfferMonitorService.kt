@@ -249,7 +249,10 @@ class OfferMonitorService : AccessibilityService() {
         val app = read.windows.firstOrNull { it.isApplication }
         // Uber's own screen with its text hidden. Besides a fully empty tree, allow a sparse one: on the map, a few labels
         // (e.g. the "Trip Radar" chip) can stay readable while the offer card itself is hidden.
-        if (app != null && read.screen.nodes.size <= SPARSE_NODES) return app
+        // Only text inside the user's reading area counts: map labels above the card don't make the screen look "normal".
+        val (bandTop, bandBottom) = ocrBand(settings)
+        val inBand = read.screen.nodes.count { n -> n.bounds?.let { (it.top + it.bottom) / 2 in bandTop..bandBottom } ?: true }
+        if (app != null && inBand <= SPARSE_NODES) return app
         // Otherwise take turns between:
         //  - large unreadable windows: while Uber is online (an Uber window such as the floating bubble exists), most
         //    likely the offer card shown over another app (recent-apps screen, photo picker...);
