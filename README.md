@@ -44,6 +44,8 @@ The figures are from the Earnings page of the Uber Driver app: total earnings in
 
 With FKUB I declined more offers, so I waited more (active time fell from 97% to 70% of online time) and took fewer trips per hour (3.2 → 2.5), but each trip paid more.
 
+**What Uber actually sent.** FKUB keeps a local log of the offers it reads (price, distance and time only). From Nov 20 to the early hours of Nov 25 it logged 607 reads; after dropping 4 misread prices and merging repeated reads and re-priced re-sends of the same trip, 500 distinct offers remain. **472 of them (94%) were below my own standard** (a CA$17 net hourly target after my vehicle cost, counting 85% of the shown price as certain). The median offer showed CA$0.86 per km and CA$18.4 per hour, which comes to about CA$8.7 per hour once the estimated tip share and vehicle cost are taken off; 65% showed less than CA$1 per km. Before FKUB I accepted all of these. The standard is mine; yours will give a different share.
+
 **Read this as one driver's week, not as a promise.** It is two days against five, in one city, on different weekdays and hours, with no control for demand, weather, promotions or tips. FKUB doesn't change what Uber offers; it only makes it quick to see which offers meet the standard you set yourself. Your numbers will differ.
 
 ## How it works
