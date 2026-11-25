@@ -472,4 +472,23 @@ class Debug1124Test {
         assertIs<AdapterResult.NoOffer>(read("Delivery (2)", "CA$5.04", "including estimated tip", "26min (9.",
             "This reguest is no longer available", "Park Rd E)", "Thurman Cir London", "X", "Match"))
     }
+
+    @Test fun nmin_for_min() {
+        val o = assertIs<AdapterResult.Offer>(read("Y? Delivery (2) Exclusive", "CA$19.04", "including estimated tip", "2 Must verify ID",
+            "() 49 nmin (29.8 km) total", "Jay Bhavani Vadapav (London)", "Sunset Rd, Elgin County", "Accept", "X")).offer
+        assertEquals(19.04, o.estimatedPayout); assertEquals(29.8, o.distanceKm); assertEquals(49.0, o.durationMinutes)
+    }
+
+    @Test fun taken_card_split_over_two_lines() {
+        assertIs<AdapterResult.NoOffer>(read("Delivery (3)", "CA$14.08", "New requests", "including estimated tip",
+            "( 38 This request is no longer", "available", "Thurman Ci, London", "Match", "X"))
+    }
+
+    @Test fun one_item_read_as_litem() {
+        for (line in listOf("litem (1 unit)", "t l item (1l unit)", "O litem (1 unit)")) {
+            val o = assertIs<AdapterResult.Offer>(read("Shop & Deliver Exclusive", "CA$11.06", "including estimated tip", line,
+                "() 30 min (11.1 km) total", "Shoppers Drug Mart (1118 Adelaide", "Beaufort St & Wharncliffe Rd N,", "London", "X", "Accept")).offer
+            assertEquals(1, o.shopItems, line)
+        }
+    }
 }

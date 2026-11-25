@@ -31,7 +31,7 @@ class UberDriverAdapter(
     var lastDebug: AdapterDebug? = null
         private set
 
-    private val EXPIRED = Regex("""no longer available""", RegexOption.IGNORE_CASE)
+    private val EXPIRED = Regex("""no longer available|request is no longer""", RegexOption.IGNORE_CASE)
 
     private data class Cand(val value: Double, val node: TextNode, val nodeIndex: Int)
 
@@ -199,7 +199,8 @@ class UberDriverAdapter(
 
         // Shop orders: "Shop & Deliver" label plus "N items (M units)"; the item count is used.
         val isShop = nodes.any { n -> containsAny(n.text.lowercase(), config.shopKeywords) }
-        val shopItems = if (!isShop) null else nodes.firstNotNullOfOrNull { n -> ITEMS.find(n.text)?.groupValues?.get(1)?.toIntOrNull() }
+        val shopItems = if (!isShop) null else (nodes.firstNotNullOfOrNull { n -> ITEMS.find(n.text)?.groupValues?.get(1)?.toIntOrNull() }
+            ?: 1.takeIf { nodes.any { n -> ONE_ITEM.containsMatchIn(n.text) } }) // OCR reads "1 item" as "litem" / "l item"
             ?.takeIf { it in 1..300 }
         val shopUnits = if (shopItems == null) null else nodes.firstNotNullOfOrNull { n -> UNITS.find(n.text)?.groupValues?.get(1)?.toIntOrNull() }
             ?.takeIf { it in shopItems..999 }
@@ -301,6 +302,7 @@ class UberDriverAdapter(
     companion object {
         private val LONE_HOURS = Regex("""^\s*\d{1,2}\s?(?:h|hr|hrs|hour|hours)\s*$""", RegexOption.IGNORE_CASE)
         private val ITEMS = Regex("""(?i)\b(\d{1,3})\s*(?:items?|件)""")
+        private val ONE_ITEM = Regex("""(?<![A-Za-z0-9])[lI|]\s?item\b""")
         private val UNITS = Regex("""(?i)\b(\d{1,3})\s*units?\b""")
 
         fun localOfferId(payout: Double?, km: Double?, min: Double?, ts: Long): String {

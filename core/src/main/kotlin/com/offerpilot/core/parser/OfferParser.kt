@@ -140,7 +140,7 @@ object OfferParser {
     private val OCR_PRICE_PREFIX = Regex("""^\s*(CA|C|CAD)?\s?[${'$'}]\s?(?=[\dOoIl|])""", RegexOption.IGNORE_CASE)
     private val DIGIT_LOOKALIKES = mapOf('O' to '0', 'o' to '0', 'I' to '1', 'l' to '1', '|' to '1')
 
-    private val TRIP_LINE = Regex("""(km|krn|kn)\b|\b(min|mins|hr|hrs)\b""", RegexOption.IGNORE_CASE)
+    private val TRIP_LINE = Regex("""(km|krn|kn)\b|\b(min|mins|hr|hrs)\b|\d\s?[nrm]min\b""", RegexOption.IGNORE_CASE)
     private val LOOKALIKE_BEFORE_UNIT = Regex("""(?<![A-Za-z0-9])[lI|](?=\s?(?:hr|hrs|h|min|mins)\b)""")
     private val LOOKALIKE_IN_NUMBER = Regex("""(?<=\d[.,]?)[Oo]|[Oo](?=[.,]?\d)|(?<=\d)[lI|]|[lI|](?=[.,]?\d)""")
     private val METRES_FOR_KM = Regex("""(\(\s?\d{1,3}[.,]\d)\s?m\s?\)""")
@@ -162,6 +162,7 @@ object OfferParser {
         var s = line.replace(Regex("""(?<=[\d\s])(krn|kn)\b""", RegexOption.IGNORE_CASE), "km")
         s = LOOKALIKE_BEFORE_UNIT.replace(s, "1")
         s = LOOKALIKE_IN_NUMBER.replace(s) { m -> if (m.value in "Oo") "0" else "1" }
+        s = s.replace(Regex("""(?<=\d)\s?[nrm]min\b"""), " min") // "49 nmin"
         s = METRES_FOR_KM.replace(s) { m -> m.groupValues[1] + " km)" }
         s = GLUED_MINUTES.replace(s) { m -> if ((m.groupValues[1] + m.groupValues[2]).toInt() >= 60) m.groupValues[2] else m.value }
         s = INTEGER_KM.replace(s) { m -> m.groupValues[1].dropLast(1) + "." + m.groupValues[1].takeLast(1) + m.groupValues[2] }
