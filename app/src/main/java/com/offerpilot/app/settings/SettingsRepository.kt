@@ -41,6 +41,7 @@ class SettingsRepository(private val context: Context) {
         val shopUnits = booleanPreferencesKey("shop_count_units")
         val monitoring = booleanPreferencesKey("monitoring_enabled")
         val sound = booleanPreferencesKey("sound_enabled")
+        val yellowSoundSeen = booleanPreferencesKey("sound_yellow_builtin_seen")
         val vibration = booleanPreferencesKey("vibration_enabled")
         val overlay = booleanPreferencesKey("overlay_enabled")
         val ocr = booleanPreferencesKey("ocr_enabled")
@@ -115,7 +116,10 @@ class SettingsRepository(private val context: Context) {
             tierSounds = SOUND_TIERS.associateWith { v ->
                 val def = DEFAULT_TIER_SOUNDS.getValue(v)
                 TierSound(
-                    enabled = this[booleanPreferencesKey("sound_${v.name}_on")] ?: def.enabled,
+                    // Yellow had no built-in sound before the "OK" clip, so its switch was saved as off on every install:
+                    // ignore that saved value once.
+                    enabled = if (v == com.offerpilot.core.model.Verdict.MIN_WAGE && this[K.yellowSoundSeen] != true) def.enabled
+                    else this[booleanPreferencesKey("sound_${v.name}_on")] ?: def.enabled,
                     volume = this[floatPreferencesKey("sound_${v.name}_vol")] ?: def.volume,
                     customPath = this[stringPreferencesKey("sound_${v.name}_path")]?.takeIf { it.isNotEmpty() },
                 )
@@ -167,6 +171,7 @@ class SettingsRepository(private val context: Context) {
             p[K.shopUnits] = e.shopCountUnits
             p[K.monitoring] = n.monitoringEnabled
             p[K.sound] = n.soundEnabled
+            p[K.yellowSoundSeen] = true
             for ((v, t) in n.tierSounds) {
                 p[booleanPreferencesKey("sound_${v.name}_on")] = t.enabled
                 p[floatPreferencesKey("sound_${v.name}_vol")] = t.volume

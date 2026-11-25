@@ -49,6 +49,7 @@ private fun tierTitle(v: Verdict, lang: Lang) = when (v) {
 private fun builtinName(v: Verdict, lang: Lang) = when (v) {
     Verdict.GREAT -> lang.t("Built-in: air horn", "内置：气笛嘟嘟嘟")
     Verdict.GOOD -> lang.t("Built-in: coin", "内置：金币")
+    Verdict.MIN_WAGE -> lang.t("Built-in: “Okay”", "内置：“Okay”")
     Verdict.LOSS -> lang.t("Built-in: wet fart", "内置：拉稀")
     else -> lang.t("No built-in sound; pick a file", "无内置音效，可选择文件")
 }
@@ -80,7 +81,7 @@ fun SoundSection(s: AppSettings, repo: SettingsRepository) {
     }
 
     Section(tr("Sounds", "音效")) {
-        SwitchRow(tr("Enable sounds", "启用音效"), s.soundEnabled, { v -> scope.launch { repo.update { it.copy(soundEnabled = v) } } }, tr("Plays per tier when an offer appears, before the spoken verdict", "订单出现时按档位播放，之后才播语音"))
+        SwitchRow(tr("Enable sounds", "启用音效"), s.soundEnabled, { v -> scope.launch { repo.update { it.copy(soundEnabled = v) } } }, tr("Plays per tier when an offer appears", "订单出现时按档位播放"))
         SOUND_TIERS.forEach { v ->
             val t = s.tierSounds[v] ?: DEFAULT_TIER_SOUNDS.getValue(v)
             HorizontalDivider()

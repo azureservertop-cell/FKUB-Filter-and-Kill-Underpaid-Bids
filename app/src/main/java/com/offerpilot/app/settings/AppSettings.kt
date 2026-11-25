@@ -41,7 +41,7 @@ val SOUND_TIERS = listOf(Verdict.GREAT, Verdict.GOOD, Verdict.MIN_WAGE, Verdict.
 val DEFAULT_TIER_SOUNDS: Map<Verdict, TierSound> = mapOf(
     Verdict.GREAT to TierSound(),
     Verdict.GOOD to TierSound(),
-    Verdict.MIN_WAGE to TierSound(enabled = false),
+    Verdict.MIN_WAGE to TierSound(),
     Verdict.LOSS to TierSound(),
 )
 
