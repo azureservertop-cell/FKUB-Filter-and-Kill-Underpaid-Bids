@@ -23,6 +23,23 @@ On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https
    - On Android 13+ a sideloaded app's switch may be greyed out: Settings → Apps → FKUB → ⋮ (top right) → **Allow restricted settings**, then turn it on again.
 4. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI, overlay and speech to Chinese.
 
+## Before and after: the author's own numbers
+
+I built FKUB after a 10-hour shift on Nov 18, 2026, and started using it the next day. The trip that did it: **29.92 km and 41 min 52 s for a CA$5.52 fare** (CA$9.00 with the tip). The fare alone is CA$0.18 per km and about CA$7.90 per hour, before fuel. It is "Offer A" in the rules table below, and far below my own standard.
+
+<img src="docs/img/nov18-trip.jpg" alt="Uber trip details from Nov 18: 41 min 52 sec, 29.92 km, fare CA$5.52, tip CA$3.48, total CA$9.00 (restaurant and address hidden)" width="300">
+
+![Earnings per online hour by day: CA$17.7 and CA$16.2 before FKUB; CA$24.1, 18.7, 20.1, 18.5 and 25.2 with FKUB](docs/img/before-after.svg)
+
+| | Days | Online | Trips | Earnings | Per online hour | Per trip |
+|---|---|---|---|---|---|---|
+| Before FKUB | Nov 17–18 | 12 h 48 min | 41 | CA$211.40 | **CA$16.5** | CA$5.16 |
+| With FKUB | Nov 19–24 (5 days driven) | 20 h 19 min | 51 | CA$450.10 | **CA$22.2** (+34%) | CA$8.83 (+71%) |
+
+The figures are from the Earnings page of the Uber Driver app: total earnings including tips, before fuel and other vehicle costs, divided by the time online. I took fewer trips per hour (3.2 → 2.5) and each one paid more.
+
+**Read this as one driver's week, not as a promise.** It is two days against five, in one city, on different weekdays and hours, with no control for demand, weather, promotions or tips. FKUB doesn't change what Uber offers; it only makes it quick to see which offers meet the standard you set yourself. Your numbers will differ.
+
 ## How it works
 
 ```mermaid
