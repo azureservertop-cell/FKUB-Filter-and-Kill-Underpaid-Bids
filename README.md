@@ -25,7 +25,7 @@ On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https
 
 ## Before and after: the author's own numbers
 
-I built FKUB after a 10-hour shift on Nov 18, 2026, and started using it the next day. The trip that did it: **29.92 km and 41 min 52 s for a CA$5.52 fare** (CA$9.00 with the tip). The fare alone is CA$0.18 per km and about CA$7.90 per hour, before fuel. It is "Offer A" in the rules table below, and far below my own standard.
+I built FKUB after a 10-hour shift on Nov 18, 2026, and started using it the next day. Until then my strategy was simple: accept every offer that came in, without picking. Since then I take only the offers that meet the standard I set myself. That is the whole difference between the two periods below. The trip that did it: **29.92 km and 41 min 52 s for a CA$5.52 fare** (CA$9.00 with the tip). The fare alone is CA$0.18 per km and about CA$7.90 per hour, before fuel. It is "Offer A" in the rules table below, and far below my own standard.
 
 <img src="docs/img/nov18-trip.jpg" alt="Uber trip details from Nov 18: 41 min 52 sec, 29.92 km, fare CA$5.52, tip CA$3.48, total CA$9.00 (restaurant and address hidden)" width="300">
 
