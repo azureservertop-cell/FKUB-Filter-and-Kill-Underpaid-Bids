@@ -5,6 +5,7 @@ import com.offerpilot.core.model.OfferSource
 import com.offerpilot.core.model.ScreenText
 import com.offerpilot.core.model.TextNode
 import com.offerpilot.core.parser.AdapterResult
+import com.offerpilot.core.parser.OfferParser
 import com.offerpilot.core.parser.UberDriverAdapter
 import com.offerpilot.core.rules.OfferEvaluator
 import kotlin.test.Test
@@ -439,5 +440,36 @@ class LcboCardTest {
         assertEquals(12.01, o.estimatedPayout); assertEquals(14.5, o.distanceKm); assertEquals(34.0, o.durationMinutes)
         assertEquals(1, o.shopItems); assertEquals("London", o.dropoffCity)
         assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+}
+
+/** Real OCR reads from the 2026-11-24 debug session (text only; positions not stored in snapshots). */
+class Debug1124Test {
+    private fun read(vararg lines: String) = UberDriverAdapter().extract(
+        ScreenText(UBER, lines.map { TextNode(it) }, 1_000L, OfferSource.OCR))
+
+    @Test fun km_read_as_m() {
+        val o = assertIs<AdapterResult.Offer>(read("Exclusive", "CA$10.08", "including estimated tip",
+            "() 24 min (15.5 m) total", "City South Pizza (London)", "Parkview Dr & The Pky, Dorchester", "X", "Accept")).offer
+        assertEquals(10.08, o.estimatedPayout); assertEquals(15.5, o.distanceKm); assertEquals(24.0, o.durationMinutes)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+
+    @Test fun clock_icon_glued_to_minutes() {
+        val o = assertIs<AdapterResult.Offer>(read("YP Delivery (2)", "CA$9.6l", "including estimated tip",
+            "937 min (14.5 km) total", "Church's Texas Chicken (1030", "Adelaide St N, London)", "Capulet Lane, Londd", "Match", "X")).offer
+        assertEquals(9.61, o.estimatedPayout); assertEquals(14.5, o.distanceKm); assertEquals(37.0, o.durationMinutes)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+
+    @Test fun real_minutes_untouched() {
+        assertEquals("47 min (11.8 km) total", OfferParser.repairOcrTripLine("47 min (11.8 km) total").first)
+        assertEquals("1 hr 37 min (31.0 km) total", OfferParser.repairOcrTripLine("1 hr 37 min (31.0 km) total").first)
+        assertEquals("7 min (1.3 km) total", OfferParser.repairOcrTripLine("97 min (1.3 km) total").first)
+    }
+
+    @Test fun taken_card_is_no_offer() {
+        assertIs<AdapterResult.NoOffer>(read("Delivery (2)", "CA$5.04", "including estimated tip", "26min (9.",
+            "This reguest is no longer available", "Park Rd E)", "Thurman Cir London", "X", "Match"))
     }
 }

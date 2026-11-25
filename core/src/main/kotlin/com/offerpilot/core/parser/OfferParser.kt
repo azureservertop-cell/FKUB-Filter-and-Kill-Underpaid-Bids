@@ -143,6 +143,8 @@ object OfferParser {
     private val TRIP_LINE = Regex("""(km|krn|kn)\b|\b(min|mins|hr|hrs)\b""", RegexOption.IGNORE_CASE)
     private val LOOKALIKE_BEFORE_UNIT = Regex("""(?<![A-Za-z0-9])[lI|](?=\s?(?:hr|hrs|h|min|mins)\b)""")
     private val LOOKALIKE_IN_NUMBER = Regex("""(?<=\d[.,]?)[Oo]|[Oo](?=[.,]?\d)|(?<=\d)[lI|]|[lI|](?=[.,]?\d)""")
+    private val METRES_FOR_KM = Regex("""(\(\s?\d{1,3}[.,]\d)\s?m\s?\)""")
+    private val GLUED_MINUTES = Regex("""(?<![\d.,])(\d)(\d{1,2})(?=\s?mins?\b)""", RegexOption.IGNORE_CASE)
     private val INTEGER_KM = Regex("""(?<![\d.,])(\d{2,4})(\s?km\b)""", RegexOption.IGNORE_CASE)
 
     /**
@@ -150,7 +152,9 @@ object OfferParser {
      * shows distance with one decimal ("1.3 km", "8.0 km", "31.0 km"), so:
      *  - a lost decimal point in the distance: "(310 km)" → "(31.0 km)" (2–4 digit integer before "km");
      *  - letters read as digits: "l hr l min" → "1 hr 1 min", "31.O km" → "31.0 km";
-     *  - "krn" / "kn" read for "km".
+     *  - "krn" / "kn" read for "km", and a dropped "k": "(15.5 m)" → "(15.5 km)";
+     *  - the clock icon read as a digit stuck to the minutes: "937 min" → "37 min". Uber writes an hour or more as
+     *    "1 hr 37 min", so a minutes figure of 60 or more always carries one digit too many.
      * Returns (repaired text, whether anything was repaired). Lines without a time or distance unit are returned unchanged.
      */
     fun repairOcrTripLine(line: String): Pair<String, Boolean> {
@@ -158,6 +162,8 @@ object OfferParser {
         var s = line.replace(Regex("""(?<=[\d\s])(krn|kn)\b""", RegexOption.IGNORE_CASE), "km")
         s = LOOKALIKE_BEFORE_UNIT.replace(s, "1")
         s = LOOKALIKE_IN_NUMBER.replace(s) { m -> if (m.value in "Oo") "0" else "1" }
+        s = METRES_FOR_KM.replace(s) { m -> m.groupValues[1] + " km)" }
+        s = GLUED_MINUTES.replace(s) { m -> if ((m.groupValues[1] + m.groupValues[2]).toInt() >= 60) m.groupValues[2] else m.value }
         s = INTEGER_KM.replace(s) { m -> m.groupValues[1].dropLast(1) + "." + m.groupValues[1].takeLast(1) + m.groupValues[2] }
         return s to (s != line)
     }

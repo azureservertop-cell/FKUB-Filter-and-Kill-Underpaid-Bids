@@ -104,11 +104,15 @@ class SnapshotStore(private val service: AccessibilityService) {
         const val UNREADABLE_DIR = "session-unreadable"
         const val UNREADABLE_MAX = 100
 
-        /** Packs a session directory into a zip of the same name (under snapshots/) for one-tap sharing. */
-        fun zipSession(sessionDir: File): File {
-            val zip = File(sessionDir.parentFile, sessionDir.name + ".zip")
+        /**
+         * Packs a session directory into a zip of the same name (under snapshots/) for one-tap sharing. [textOnly] leaves
+         * the screenshots out ("<name>-text.zip"): the trace and the JSON files are enough to see what was read, and a long
+         * session with screenshots runs to hundreds of MB.
+         */
+        fun zipSession(sessionDir: File, textOnly: Boolean = false): File {
+            val zip = File(sessionDir.parentFile, sessionDir.name + (if (textOnly) "-text" else "") + ".zip")
             java.util.zip.ZipOutputStream(zip.outputStream().buffered()).use { out ->
-                sessionDir.listFiles()?.sortedBy { it.name }?.forEach { f ->
+                sessionDir.listFiles()?.filter { !textOnly || it.extension != "png" }?.sortedBy { it.name }?.forEach { f ->
                     out.putNextEntry(java.util.zip.ZipEntry(sessionDir.name + "/" + f.name))
                     f.inputStream().use { it.copyTo(out) }
                     out.closeEntry()

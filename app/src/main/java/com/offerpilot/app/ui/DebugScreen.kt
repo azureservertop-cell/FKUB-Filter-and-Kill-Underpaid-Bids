@@ -147,8 +147,9 @@ fun DebugScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                                 val zip = File(dir, d.name + ".zip").takeIf { it.exists() && it.lastModified() >= newest } ?: SnapshotStore.zipSession(d)
                                 share(ctx, zip)
                             }) { Text(tr("Share zip", "分享 zip")) }
+                            TextButton(onClick = { share(ctx, SnapshotStore.zipSession(d, textOnly = true)) }) { Text(tr("Text only", "只发文字")) }
                             TextButton(onClick = { d.listFiles()?.filter { it.extension == "json" }?.maxByOrNull { it.name }?.let { preview = summarize(it) } }) { Text(tr("View latest", "看最后一份")) }
-                            TextButton(onClick = { d.deleteRecursively(); File(dir, d.name + ".zip").delete(); refresh++ }) { Text(tr("Delete", "删除")) }
+                            TextButton(onClick = { d.deleteRecursively(); File(dir, d.name + ".zip").delete(); File(dir, d.name + "-text.zip").delete(); refresh++ }) { Text(tr("Delete", "删除")) }
                         }
                     }
                 }

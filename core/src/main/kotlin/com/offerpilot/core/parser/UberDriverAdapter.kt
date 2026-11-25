@@ -31,6 +31,8 @@ class UberDriverAdapter(
     var lastDebug: AdapterDebug? = null
         private set
 
+    private val EXPIRED = Regex("""no longer available""", RegexOption.IGNORE_CASE)
+
     private data class Cand(val value: Double, val node: TextNode, val nodeIndex: Int)
 
     override fun extract(screen: ScreenText): AdapterResult {
@@ -78,6 +80,11 @@ class UberDriverAdapter(
     }
 
     private fun extractSingle(screen: ScreenText): AdapterResult {
+        // Uber greys a taken card out with "This request is no longer available": nothing left to evaluate.
+        if (screen.nodes.any { EXPIRED.containsMatchIn(it.text) }) {
+            lastDebug = AdapterDebug(note = "offer no longer available")
+            return AdapterResult.NoOffer
+        }
         var repairedPrice = false
         val nodes = joinSplitHours(screen.nodes.filter { it.text.isNotBlank() }).map { n ->
             if (screen.source != com.offerpilot.core.model.OfferSource.OCR) return@map n
