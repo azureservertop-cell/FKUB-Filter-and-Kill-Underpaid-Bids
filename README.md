@@ -39,7 +39,7 @@ I built FKUB after a 10-hour shift on Nov 18, 2026, and started using it the nex
 The figures are from the Earnings page of the Uber Driver app: total earnings including tips, before fuel and other vehicle costs. Both hourly figures matter:
 
 - **Per online hour (+34%)** counts the time spent waiting for offers too. It is what the shift as a whole paid.
-- **Per active hour (+86%)** counts only the time on a trip, which is when the car is moving and burning fuel. To earn CA$100 I was on trips for about 5.9 hours before and 3.1 hours with FKUB: less driving and less fuel for the same money, and an easier shift.
+- **Per active hour (+86%)** counts only the time on a trip, which is when the car is moving and burning fuel. To earn CA$100 I was on trips for about 5.9 hours before and 3.1 hours with FKUB, about 47% less time on the road for the same money. **That is where the fuel saving comes from:** fuel and wear are spent while driving, not while waiting, and the trips I now skip are mostly the long low-paid ones like the one above. I didn't log kilometres, so the saving in litres isn't measured here. The shift is also less tiring.
 
 With FKUB I declined more offers, so I waited more (active time fell from 97% to 70% of online time) and took fewer trips per hour (3.2 → 2.5), but each trip paid more.
 
