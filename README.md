@@ -46,7 +46,11 @@ Phase 0 on a real device (Android 15) showed that **while an offer popup is up, 
 3. runs ML Kit text recognition **on the device**; the bitmap is recycled right away and never saved;
 4. parses lines like `CA$5.50` / `including estimated tip` / `15 min (1.3 km) total` / `Accept`, repairing common OCR misreads (e.g. `CA$678` → `CA$6.78`).
 
-This works with Uber in the foreground and when Uber pops an offer over another app (maps, launcher, …). The button may say **Accept** or **Match**.
+This works with Uber in the foreground and when Uber pops an offer over another app (maps, launcher, …). The button may say **Accept** (an offer sent to you, often marked "Exclusive") or **Match** (a Trip Radar offer shown to several drivers); FKUB records which, so the Stats tab can compare them.
+
+**Reading area.** On the Status tab you can limit OCR to a band of the screen (e.g. the lower part, where the card sits). That is faster and keeps map labels out. If the price turns out to be cut off by the band, FKUB reads the whole window once more. Text in capitals from the map (`COMMISSIONERS RD E`) is never taken as part of the address.
+
+**One card, one answer.** While a card stays on screen it is read again about every 0.8 s. A single pass that misses it doesn't hide the result, and for the same price and distance the longer time and the city already read are kept, so the verdict doesn't flip. The glow and pill stay until the offer is gone (or for a fixed number of seconds, if you prefer).
 
 **Trip Radar.** On Uber's Trip Radar list, where several offers are stacked, each card is judged on its own and gets a small coloured badge with its estimated net hourly next to its price. The badges disappear while you scroll and come back at the new positions once the list stops (about a second with OCR). There is no sound, speech or glow on the list, since you are browsing rather than receiving an offer. FKUB does not try to get around Uber hiding its UI.
 
@@ -103,18 +107,20 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 
 - **Status**: language, app to watch (picked from your installed apps), OCR reading area (e.g. only the lower part of the screen, shown on the real screen while you adjust it), service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
-- **Stats**: a log of every offer FKUB read (time, shown price, km, minutes and whether it was an Accept or Match offer), re-judged with your current rules: this week's share of offers below your own standard (vs last week), Accept vs Match comparison (count, median price, $/km, net hourly and share meeting your standard for direct offers vs Trip Radar offers), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
+- **Stats**: a log of every offer FKUB read (time, shown price, km, minutes, whether it was an Accept or Match offer, and a Shop order's item counts), re-judged with your current rules: this week's share of offers below your own standard (vs last week), Accept vs Match comparison (count, median price, $/km, net hourly and share meeting your standard for direct offers vs Trip Radar offers), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
 - **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
-- **Debug** (developer only: tap the version number at the bottom of Status 7 times): target package, continuous capture (one tap to start, one to stop, zipped for sharing), single snapshots, capture list.
+- **Debug** (developer only: tap the version number at the bottom of Status 7 times): target package, continuous capture (one tap to start, one to stop, zipped for sharing, with a `trace.txt` of every read and why a result was or wasn't shown), single snapshots, capture list.
 
 ## Architecture
 
 ```
 core/   pure Kotlin/JVM, no Android dependency, unit-tested
   model/     DeliveryOffer, EvaluationResult, Verdict, ScreenText
-  parser/    OfferParser (money / distance / time, OCR repair), OfferAdapter, UberDriverAdapter
+  parser/    OfferParser (money / distance / time, OCR repair), OfferAdapter, UberDriverAdapter (single card + Trip Radar list),
+             DropoffCity (city of the drop-off line, out-of-town check)
   rules/     OfferEvaluator, EvaluatorSettings
   tracking/  OfferTracker (dedupe, settle time for incomplete offers, withdraw when gone)
+  fuel/      FuelPriceCsv (public fuel-price data parsing)
   stats/     OfferRecord, OfferStats (history re-evaluated with the current rules)
   format/    OfferMessages (pill / speech / detail text, English + Chinese)
   i18n/      Lang
@@ -139,9 +145,9 @@ app/    Android
 
 - Only windows of the app(s) you picked are read (none until you pick one); other apps are seen by package name only, to notice that you left Uber. OCR captures only Uber's window.
 - Missing price / distance / time, indistinguishable candidates, several accept buttons, implausible values (≤ 0, huge, average speed > 130 km/h), confidence < 0.6 or data older than 30 s → **unknown**.
-- When the popup disappears or you switch apps, the glow and pill are removed and speech stops immediately.
+- When the popup disappears or you switch apps, the glow and pill are removed and speech stops (within about two reads when the card was read by OCR).
 - The same offer isn't announced twice within 20 s; incomplete offers get 0.7 s to fill in before "incomplete" is reported.
-- A screen only counts as an offer if it has the **Accept** button or the "estimated tip" label, so Uber's trip history and earnings pages (which also show prices, km and minutes) are ignored. A window that keeps showing no offer is OCR'd at most every 5 s instead of continuously.
+- A screen only counts as an offer if it has the **Accept** button or the "estimated tip" label, so Uber's trip history and earnings pages (which also show prices, km and minutes) are ignored. A window that keeps showing no offer is OCR'd at most every 2 s, and only while the screen is changing; an unreadable window that may belong to another app, at most every 15 s.
 - Events are throttled (≤ 1 read per 150 ms), nodes are read on a worker thread with a 1500-node cap, OCR runs at most every 0.8 s, and every error degrades to "no offer" without affecting Uber Driver.
 
 ## Building
@@ -155,17 +161,17 @@ CI (`.github/workflows/android.yml`) runs the tests, builds the APK and publishe
 
 ## Tests
 
-`core/src/test` has 109 unit tests: price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
+`core/src/test` has over 120 unit tests, many of them built from real cards drivers reported (whole-dollar prices like `CA$7`, `1 hr 10 min`, Shop & Deliver with items and units, Chinese restaurant names, map labels around the card): price / distance / duration parsing (`$9.00`, `29.92 km`, `1 hr 3 min`, miles), missing and malformed values, negative / zero / huge values, multiple amounts, formula boundaries, tip deduction, return-trip cost, adapter ambiguity, real-device offer text and OCR misread repair, dedupe, offer disappearance, ignoring trip-history screens, drop-off city and out-of-town matching, Trip Radar lists, offer statistics, fuel-price CSV parsing, and the English / Chinese messages.
 
 Integration checks that need a real device are listed in [docs/PHASE0.md](docs/PHASE0.md).
 
 ## Privacy
 
-The only network requests are for public fuel-price data in Auto mode (Ontario open data, falling back to Statistics Canada); they only download whole public datasets, and your city is matched on the phone. Switch fuel price to Manual and the app makes no network requests at all. Screenshots are processed in memory and never saved by default. The offer log keeps only time, price, km and minutes in app-private storage (it is deleted with the app, and you can clear it or turn it off on the Stats tab). Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses are never uploaded. In normal use they are never saved or logged: the out-of-town alert compares the drop-off city in memory and discards it. Only the hidden developer options (off by default) can save screen text, which may include addresses; it stays on the phone. Names and order numbers are not read.
+The only network requests are for public fuel-price data in Auto mode (Ontario open data, falling back to Statistics Canada); they only download whole public datasets, and your city is matched on the phone. Switch fuel price to Manual and the app makes no network requests at all. Screenshots are processed in memory and never saved by default. The offer log keeps only time, price, km, minutes, Accept or Match, and a Shop order's item counts in app-private storage (it is deleted with the app, and you can clear it or turn it off on the Stats tab). Debug snapshots are only saved when you start a capture (or turn on auto snapshot) and stay on the phone in `Android/data/com.offerpilot.app/files/snapshots/`. Addresses are never uploaded. In normal use they are never saved or logged: the out-of-town alert compares the drop-off city in memory and discards it. Only the hidden developer options (off by default) can save screen text, which may include addresses; it stays on the phone. Names and order numbers are not read.
 
 ## Status and limitations
 
-- Verified on one phone (nubia, Android 15) in London, Ontario, with Canadian-dollar offers in English. Other Uber layouts (multi-stop, other languages, other regions) haven't been seen yet; the adapter answers "unknown" rather than guessing.
+- Verified on one phone (nubia, Android 15) in London and Toronto, Ontario, with Canadian-dollar offers in English, light and dark theme: Delivery, Delivery (2), Shop & Deliver, Exclusive / Accept, Match and the Trip Radar list. Other languages and regions haven't been seen yet; the adapter answers "unknown" rather than guessing.
 - OCR needs Android 14+ for window-only screenshots; Android 11–13 fall back to a full screenshot cropped to Uber's window.
 - Auto fuel price uses government regional averages (weekly for Ontario cities, monthly from Statistics Canada elsewhere), so it lags the pump by days to weeks. The data layouts are discovered at runtime; if a source changes, the app keeps the last price and shows the error.
 - The rolling `latest` build is a debug build signed with a public debug key kept in the repo (`app/fkub-debug.keystore`), for testing only. Versioned releases (tags `v*`) are signed with a private release key; see [docs/RELEASING.md](docs/RELEASING.md). The two use different keys, so switching between them needs one uninstall.

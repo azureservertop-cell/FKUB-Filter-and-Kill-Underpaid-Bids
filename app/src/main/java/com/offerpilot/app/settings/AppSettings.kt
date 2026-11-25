@@ -68,6 +68,8 @@ data class AppSettings(
     val ttsVolume: Float = 1.0f,
     val overlayPosition: OverlayPosition = OverlayPosition.TOP,
     val overlaySeconds: Int = 8,
+    /** Keep the pill and glow until the offer leaves the screen instead of hiding them after [overlaySeconds]. */
+    val overlayUntilGone: Boolean = true,
     val debugMode: Boolean = false,
     /** Developer options (Debug tab, snapshots). Hidden until the version number is tapped 7 times. */
     val developerMode: Boolean = false,

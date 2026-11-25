@@ -129,11 +129,18 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
                 { v -> upd { it.copy(overlayPosition = if (v) OverlayPosition.CENTER else OverlayPosition.TOP) } },
                 tr("Top by default so it doesn't cover the accept area at the bottom (the overlay never intercepts touches)", "默认在顶部，避免遮挡底部接单区域（悬浮层不可点击，不会拦截触摸）"),
             )
-            Text(tr("Show the pill for ${s.overlaySeconds} s (hidden as soon as the offer disappears)", "悬浮提示显示 ${s.overlaySeconds} 秒（订单消失时立即隐藏）"))
-            Slider(
-                value = s.overlaySeconds.toFloat(), valueRange = 3f..20f, steps = 16,
-                onValueChange = { v -> upd { it.copy(overlaySeconds = v.roundToInt()) } },
+            SwitchRow(
+                tr("Keep the result until the offer is gone", "结果一直显示到订单消失"), s.overlayUntilGone,
+                { v -> upd { it.copy(overlayUntilGone = v) } },
+                tr("Off: hide it after a set time even if the offer is still on screen", "关闭后：到设定时间就收起，即使订单还在屏幕上"),
             )
+            if (!s.overlayUntilGone) {
+                Text(tr("Show the pill for ${s.overlaySeconds} s (hidden as soon as the offer disappears)", "悬浮提示显示 ${s.overlaySeconds} 秒（订单消失时立即隐藏）"))
+                Slider(
+                    value = s.overlaySeconds.toFloat(), valueRange = 3f..20f, steps = 16,
+                    onValueChange = { v -> upd { it.copy(overlaySeconds = v.roundToInt()) } },
+                )
+            }
             if (s.developerMode) {
                 SwitchRow(tr("Debug mode", "调试模式"), s.debugMode, { v -> upd { it.copy(debugMode = v) } }, tr("Enables snapshot capture and other tools (see the Debug tab)", "启用快照抓取等调试工具（见「调试」页）"))
             }

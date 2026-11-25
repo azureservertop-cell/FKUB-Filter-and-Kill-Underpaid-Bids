@@ -28,6 +28,14 @@ import com.offerpilot.app.speech.Speaker
 import com.offerpilot.core.OfferPipeline
 import com.offerpilot.core.PipelineOutput
 import com.offerpilot.core.format.OfferMessages
+import com.offerpilot.core.model.DeliveryOffer
+import com.offerpilot.core.model.EvaluationResult
+import com.offerpilot.core.model.OfferSource
+import com.offerpilot.core.model.ParseIssue
+import com.offerpilot.core.model.ScreenText
+import com.offerpilot.core.parser.DropoffCity
+import com.offerpilot.core.stats.OfferRecord
+import com.offerpilot.app.history.OfferHistory
 import com.offerpilot.core.parser.AdapterResult
 import com.offerpilot.core.parser.UberAdapterConfig
 import com.offerpilot.core.parser.UberDriverAdapter
@@ -69,6 +77,10 @@ class OfferMonitorService : AccessibilityService() {
         private const val OCR_IDLE_INTERVAL_MS = 2_000L
         /** An Uber window with this few readable lines is treated as hiding its text (OCR is used). */
         private const val SPARSE_NODES = 8
+        /** Longest a verdict stays up when it is kept until the offer disappears. */
+        private const val OVERLAY_MAX_SECONDS = 60
+        /** Same as [OCR_IDLE_INTERVAL_MS], for unreadable windows of unknown apps: read them rarely. */
+        private const val OCR_FOREIGN_IDLE_INTERVAL_MS = 15_000L
         const val RECORD_MAX_COUNT = 1000
 
         private var instanceRef = WeakReference<OfferMonitorService>(null)
@@ -216,7 +228,7 @@ class OfferMonitorService : AccessibilityService() {
                 // Don't treat this as a normal frame: that used to drop the OCR in flight, and if Uber sent no further
                 // events (it often doesn't while an offer is up), a popup that appeared now was never read.
                 val since = SystemClock.elapsedRealtime() - (lastOcrAtFor[candidate.id] ?: 0L)
-                scheduleRead((OCR_IDLE_INTERVAL_MS - since).coerceAtLeast(READ_INTERVAL_MS))
+                scheduleRead((idleInterval(candidate.id) - since).coerceAtLeast(READ_INTERVAL_MS))
                 return
             }
             val region = candidate
@@ -261,7 +273,8 @@ class OfferMonitorService : AccessibilityService() {
         //  - Uber's own screen even with more readable text: a zoomed-in map exposes many street / area labels, which
         //    made the tree look "not hidden" so the card on top of it was never read.
         // Windows that are allowed now come first, then the one read longest ago; each one that keeps showing no offer
-        // is only read every [OCR_IDLE_INTERVAL_MS] (the caller's back-off). A wrong window can't block the right one.
+        // is only read every [idleInterval] (the caller's back-off). A wrong window can't block the right one.
+        foreignWindowIds = read.opaqueWindows.mapTo(HashSet()) { it.id }
         val candidates = read.opaqueWindows + listOfNotNull(app)
         return candidates.sortedWith(compareBy({ !ocrAllowed(it.id) }, { lastOcrAtFor[it.id] ?: 0L })).firstOrNull()
     }
@@ -273,11 +286,17 @@ class OfferMonitorService : AccessibilityService() {
 
     /**
      * After [OPAQUE_MAX_MISSES] OCR passes on the same Uber window found no offer (e.g. a screen that hides its text but isn't
-     * an offer), OCR that window at most every [OCR_IDLE_INTERVAL_MS] instead of every [OCR_MIN_INTERVAL_MS].
+     * an offer), OCR that window at most every [idleInterval] instead of every [OCR_MIN_INTERVAL_MS].
      */
     private fun ocrAllowed(windowId: Int): Boolean =
         (opaqueMisses[windowId] ?: 0) < OPAQUE_MAX_MISSES ||
-            SystemClock.elapsedRealtime() - (lastOcrAtFor[windowId] ?: 0L) >= OCR_IDLE_INTERVAL_MS
+            SystemClock.elapsedRealtime() - (lastOcrAtFor[windowId] ?: 0L) >= idleInterval(windowId)
+
+    /** Unreadable windows that may belong to another app (a game, a video): once they showed no offer, look rarely. */
+    private var foreignWindowIds: Set<Int> = emptySet()
+
+    private fun idleInterval(windowId: Int): Long =
+        if (windowId in foreignWindowIds) OCR_FOREIGN_IDLE_INTERVAL_MS else OCR_IDLE_INTERVAL_MS
 
     // ---------------- OCR ----------------
 
@@ -304,7 +323,7 @@ class OfferMonitorService : AccessibilityService() {
             // The card sits higher than the reading area (e.g. a single Trip Radar card near the top): the trip line was
             // read but the price was cut off. Read the whole window once more instead of giving up.
             val cutOff = banded != null && (bandTop > 0 || bandBottom != Int.MAX_VALUE) && runCatching {
-                (adapter.extract(banded) as? AdapterResult.Offer)?.offer?.issues?.contains(com.offerpilot.core.model.ParseIssue.PAYOUT_MISSING) == true
+                (adapter.extract(banded) as? AdapterResult.Offer)?.offer?.issues?.contains(ParseIssue.PAYOUT_MISSING) == true
             }.getOrDefault(false)
             if (cutOff) ocr.recognize(window.bounds, window.id, pkg, 0, Int.MAX_VALUE) { full -> onOcr(window, gen, started, full ?: banded) }
             else onOcr(window, gen, started, banded)
@@ -312,43 +331,45 @@ class OfferMonitorService : AccessibilityService() {
     }
 
     /** Worker thread (ML Kit callback). */
-    private fun onOcr(window: NodeReader.TargetWindow, gen: Long, started: Long, screen: com.offerpilot.core.model.ScreenText?) {
-        run {
-            ocrInFlight = false
-            val s = settings
-            var found = false
-            try {
-                if (screen != null) {
-                    found = adapter.extract(screen).let { it is AdapterResult.Offer || it is AdapterResult.OfferList }
-                    if (found) opaqueMisses.remove(window.id) else opaqueMisses[window.id] = (opaqueMisses[window.id] ?: 0) + 1
-                    if (opaqueMisses.size > 50) opaqueMisses.clear()
-                }
-                // The popup closed while OCR was running (a normal node frame arrived) → discard, so no stale verdict is shown
-                if (screen == null || gen != frameGeneration) trace("ocr window=${window.id} dropped: screen=${screen != null} genChanged=${gen != frameGeneration}")
-                if (screen != null && gen == frameGeneration && s.monitoringEnabled) {
-                    lastOcrLines = screen.nodes.map { it.text }
-                    lastOcrLinesAt = System.currentTimeMillis()
-                    val adapted = adapter.extract(screen)
-                    MonitorState.update { it.copy(lastAdapterNote = "OCR: " + (adapter.lastDebug?.note ?: "")) }
-                    val now = System.currentTimeMillis()
-                    // The list scrolled while this screenshot was being read: positions are stale, read again instead
-                    // One OCR pass that misses the card (countdown animation, a half-drawn frame) shouldn't make the
-                    // verdict blink off: while an offer is shown, only the second miss in a row hides it.
-                    val blip = adapted is AdapterResult.NoOffer && pipeline.tracker.activeOffer != null && ocrNoOfferStreak == 0
-                    ocrNoOfferStreak = if (adapted is AdapterResult.NoOffer) ocrNoOfferStreak + 1 else 0
-                    trace("ocr window=${window.id} lines=${screen.nodes.size} ms=${SystemClock.elapsedRealtime() - started} " +
-                        "result=${adapted::class.simpleName} blip=$blip note=${adapter.lastDebug?.note} text=${screen.nodes.joinToString(" | ") { it.text }}")
-                    if (adapted is AdapterResult.OfferList && lastScrollAt > started) scheduleRead(LIST_SETTLE_MS)
-                    else if (!blip) dispatch(adapted, s, now)
-                    Log.d(TAG, "ocr frame in ${SystemClock.elapsedRealtime() - started}ms, ${screen.nodes.size} lines")
-                }
-            } catch (t: Throwable) {
-                Log.w(TAG, "ocr handling failed", t)
+    private fun onOcr(window: NodeReader.TargetWindow, gen: Long, started: Long, screen: ScreenText?) {
+        ocrInFlight = false
+        val s = settings
+        var found = false
+        try {
+            val adapted = screen?.let { adapter.extract(it) }
+            if (adapted != null) {
+                found = adapted is AdapterResult.Offer || adapted is AdapterResult.OfferList
+                if (found) opaqueMisses.remove(window.id) else opaqueMisses[window.id] = (opaqueMisses[window.id] ?: 0) + 1
+                if (opaqueMisses.size > 50) opaqueMisses.clear()
             }
-            // Uber doesn't always emit events while the popup is up: look again so we notice it closing or changing.
-            // After a few passes without an offer (e.g. a non-offer screen), stop polling and wait for the next window event.
-            if (found || (opaqueMisses[window.id] ?: 0) < OPAQUE_MAX_MISSES) scheduleRead(OCR_MIN_INTERVAL_MS)
+            // A normal node frame arrived while OCR was running (the popup closed) → discard, so no stale verdict is shown
+            val stale = gen != frameGeneration
+            if (screen == null || adapted == null || stale) {
+                trace("ocr window=${window.id} dropped: screenshot=${screen != null} stale=$stale")
+            } else if (s.monitoringEnabled) {
+                lastOcrLines = screen.nodes.map { it.text }
+                lastOcrLinesAt = System.currentTimeMillis()
+                MonitorState.update { it.copy(lastAdapterNote = "OCR: " + (adapter.lastDebug?.note ?: "")) }
+                // One OCR pass that misses the card (countdown animation, a half-drawn frame) shouldn't make the
+                // verdict blink off: while an offer is shown, only the second miss in a row hides it.
+                val blip = adapted is AdapterResult.NoOffer && pipeline.tracker.activeOffer != null && ocrNoOfferStreak == 0
+                ocrNoOfferStreak = if (adapted is AdapterResult.NoOffer) ocrNoOfferStreak + 1 else 0
+                // The text read is only traced for the watched app's own window or when it is an offer card
+                val text = if (found || window.id !in foreignWindowIds) screen.nodes.joinToString(" | ") { it.text } else "(not logged)"
+                trace("ocr window=${window.id} lines=${screen.nodes.size} ms=${SystemClock.elapsedRealtime() - started} " +
+                    "result=${adapted::class.simpleName} blip=$blip note=${adapter.lastDebug?.note} text=$text")
+                when {
+                    // The list scrolled while this screenshot was being read: positions are stale, read again instead
+                    adapted is AdapterResult.OfferList && lastScrollAt > started -> scheduleRead(LIST_SETTLE_MS)
+                    !blip -> dispatch(adapted, s, System.currentTimeMillis())
+                }
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "ocr handling failed", t)
         }
+        // Uber doesn't always emit events while the popup is up: look again so we notice it closing or changing.
+        // After a few passes without an offer (e.g. a non-offer screen), stop polling and wait for the next window event.
+        if (found || (opaqueMisses[window.id] ?: 0) < OPAQUE_MAX_MISSES) scheduleRead(OCR_MIN_INTERVAL_MS)
     }
 
     /** Offer lists get per-card badges; everything else goes through the popup tracker. */
@@ -373,7 +394,7 @@ class OfferMonitorService : AccessibilityService() {
             val r = evaluator.evaluate(c.offer, System.currentTimeMillis())
             if (!r.isConclusive) return@mapNotNull null
             val town = if (!s.evaluator.outOfTownAlert) null
-            else com.offerpilot.core.parser.DropoffCity.outOfTown(c.offer.dropoffCity, s.homeCities.ifBlank { s.fuel.region })
+            else DropoffCity.outOfTown(c.offer.dropoffCity, s.homeCities.ifBlank { s.fuel.region })
             recordListHistory(c.offer, s)
             OverlayController.CardBadge(OfferMessages.overlay(c.offer, r, s.language, town), r.verdict, c.anchor.top, c.anchor.bottom)
         }
@@ -383,16 +404,16 @@ class OfferMonitorService : AccessibilityService() {
         scheduleRead(LIST_REFRESH_MS)
     }
 
-    private fun recordListHistory(o: com.offerpilot.core.model.DeliveryOffer, s: AppSettings) {
-        if (!s.historyEnabled || o.source == com.offerpilot.core.model.OfferSource.MOCK) return
+    private fun recordListHistory(o: DeliveryOffer, s: AppSettings) {
+        if (!s.historyEnabled || o.source == OfferSource.MOCK) return
         val price = o.estimatedPayout ?: return
         val km = o.distanceKm ?: return
         val min = o.durationMinutes ?: return
         val key = "$price/$km/$min"
         if (!listHistoryKeys.add(key)) return
         if (listHistoryKeys.size > 100) listHistoryKeys.remove(listHistoryKeys.first())
-        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min, o.kind, o.shopItems, o.shopUnits)
-        workHandler.post { runCatching { com.offerpilot.app.history.OfferHistory.append(this, rec) } }
+        val rec = OfferRecord(System.currentTimeMillis(), price, km, min, o.kind, o.shopItems, o.shopUnits)
+        workHandler.post { runCatching { OfferHistory.append(this, rec) } }
     }
 
     private fun handle(output: PipelineOutput, s: AppSettings, now: Long) {
@@ -413,15 +434,15 @@ class OfferMonitorService : AccessibilityService() {
     /** Stats tab history: one record per announced, judged offer (numbers only). */
     private fun recordHistory(out: PipelineOutput.Show, s: AppSettings) {
         val o = out.offer
-        if (!s.historyEnabled || !out.announce || !out.result.isConclusive || o.source == com.offerpilot.core.model.OfferSource.MOCK) return
+        if (!s.historyEnabled || !out.announce || !out.result.isConclusive || o.source == OfferSource.MOCK) return
         val price = o.estimatedPayout ?: return
         val km = o.distanceKm ?: return
         val min = o.durationMinutes ?: return
         val key = "$price/$km/$min"
         if (key == lastHistoryKey) return
         lastHistoryKey = key
-        val rec = com.offerpilot.core.stats.OfferRecord(System.currentTimeMillis(), price, km, min, o.kind, o.shopItems, o.shopUnits)
-        workHandler.post { runCatching { com.offerpilot.app.history.OfferHistory.append(this, rec) } }
+        val rec = OfferRecord(System.currentTimeMillis(), price, km, min, o.kind, o.shopItems, o.shopUnits)
+        workHandler.post { runCatching { OfferHistory.append(this, rec) } }
     }
 
     private var lastUnreadableLogAt = 0L
@@ -458,11 +479,11 @@ class OfferMonitorService : AccessibilityService() {
     }
 
     private fun present(out: PipelineOutput.Show, s: AppSettings) {
-        if (!out.result.isConclusive && s.logUnreadable && s.developerMode && out.offer.source != com.offerpilot.core.model.OfferSource.MOCK) logUnreadable(out, s)
+        if (!out.result.isConclusive && s.logUnreadable && s.developerMode && out.offer.source != OfferSource.MOCK) logUnreadable(out, s)
         recordHistory(out, s)
         // City-only comparison in memory; the city is never logged or stored.
         val outOfTown = if (!s.evaluator.outOfTownAlert) null
-        else com.offerpilot.core.parser.DropoffCity.outOfTown(out.offer.dropoffCity, s.homeCities.ifBlank { s.fuel.region })
+        else DropoffCity.outOfTown(out.offer.dropoffCity, s.homeCities.ifBlank { s.fuel.region })
         val overlayText = OfferMessages.overlay(out.offer, out.result, s.language, outOfTown)
         MonitorState.update {
             it.copy(
@@ -476,7 +497,9 @@ class OfferMonitorService : AccessibilityService() {
         }
         if (s.overlayEnabled || s.edgeGlowEnabled) {
             overlay.show(
-                overlayText, out.result.verdict, s.overlayPosition, s.overlaySeconds,
+                overlayText, out.result.verdict, s.overlayPosition,
+                // "Until gone": the tracker clears it when the card leaves; the cap is only a safety net.
+                if (s.overlayUntilGone && out.offer.source != OfferSource.MOCK) OVERLAY_MAX_SECONDS else s.overlaySeconds,
                 showText = s.overlayEnabled, showGlow = s.edgeGlowEnabled,
             )
         }
@@ -514,7 +537,7 @@ class OfferMonitorService : AccessibilityService() {
     }
 
     /** Called from the mock page: previews a mock offer with the real overlay / speech / vibration. */
-    fun preview(offer: com.offerpilot.core.model.DeliveryOffer, result: com.offerpilot.core.model.EvaluationResult) {
+    fun preview(offer: DeliveryOffer, result: EvaluationResult) {
         present(PipelineOutput.Show(offer, result, announce = true), settings)
     }
 

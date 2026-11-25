@@ -49,6 +49,7 @@ class SettingsRepository(private val context: Context) {
         val volume = floatPreferencesKey("tts_volume")
         val overlayPos = stringPreferencesKey("overlay_position")
         val overlaySec = intPreferencesKey("overlay_seconds")
+        val overlayUntilGone = booleanPreferencesKey("overlay_until_gone")
         val debug = booleanPreferencesKey("debug_mode")
         val autoSnap = booleanPreferencesKey("auto_snapshot")
         val snapShot = booleanPreferencesKey("snapshot_screenshot")
@@ -129,6 +130,7 @@ class SettingsRepository(private val context: Context) {
             ttsVolume = this[K.volume] ?: d.ttsVolume,
             overlayPosition = this[K.overlayPos]?.let { runCatching { OverlayPosition.valueOf(it) }.getOrNull() } ?: d.overlayPosition,
             overlaySeconds = this[K.overlaySec] ?: d.overlaySeconds,
+            overlayUntilGone = this[K.overlayUntilGone] ?: d.overlayUntilGone,
             debugMode = this[K.debug] ?: d.debugMode,
             autoSnapshot = this[K.autoSnap] ?: d.autoSnapshot,
             snapshotScreenshot = this[K.snapShot] ?: d.snapshotScreenshot,
@@ -182,6 +184,7 @@ class SettingsRepository(private val context: Context) {
             p[K.volume] = n.ttsVolume
             p[K.overlayPos] = n.overlayPosition.name
             p[K.overlaySec] = n.overlaySeconds
+            p[K.overlayUntilGone] = n.overlayUntilGone
             p[K.debug] = n.debugMode
             p[K.autoSnap] = n.autoSnapshot
             p[K.snapShot] = n.snapshotScreenshot
