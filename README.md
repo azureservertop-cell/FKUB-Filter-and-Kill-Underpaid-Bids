@@ -31,12 +31,12 @@ I built FKUB after a 10-hour shift on Nov 18, 2026, and started using it the nex
 
 ![Earnings per online hour by day: CA$17.7 and CA$16.2 before FKUB; CA$24.1, 18.7, 20.1, 18.5 and 25.2 with FKUB](docs/img/before-after.svg)
 
-| | Days | Online | Trips | Earnings | Per online hour | Per trip |
-|---|---|---|---|---|---|---|
-| Before FKUB | Nov 17–18 | 12 h 48 min | 41 | CA$211.40 | **CA$16.5** | CA$5.16 |
-| With FKUB | Nov 19–24 (5 days driven) | 20 h 19 min | 51 | CA$450.10 | **CA$22.2** (+34%) | CA$8.83 (+71%) |
+| | Days | Online | Of which active | Trips | Earnings | Per online hour | Per active hour | Per trip |
+|---|---|---|---|---|---|---|---|---|
+| Before FKUB | Nov 17–18 | 12 h 48 min | 12 h 24 min | 41 | CA$211.40 | **CA$16.5** | CA$17.0 | CA$5.16 |
+| With FKUB | Nov 19–24 (5 days driven) | 20 h 19 min | 14 h 10 min | 51 | CA$450.10 | **CA$22.2** (+34%) | CA$31.8 (+86%) | CA$8.83 (+71%) |
 
-The figures are from the Earnings page of the Uber Driver app: total earnings including tips, before fuel and other vehicle costs, divided by the time online. I took fewer trips per hour (3.2 → 2.5) and each one paid more.
+The figures are from the Earnings page of the Uber Driver app: total earnings including tips, before fuel and other vehicle costs. **Per online hour** counts the time spent waiting for offers too, so it is the fairer comparison; **per active hour** counts only the time on a trip. With FKUB I declined more offers, so I waited more (active time fell from 97% to 70% of online time) and took fewer trips per hour (3.2 → 2.5), but each trip paid more and the car covered far fewer low-paid kilometres.
 
 **Read this as one driver's week, not as a promise.** It is two days against five, in one city, on different weekdays and hours, with no control for demand, weather, promotions or tips. FKUB doesn't change what Uber offers; it only makes it quick to see which offers meet the standard you set yourself. Your numbers will differ.
 
