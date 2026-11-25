@@ -33,10 +33,15 @@ I built FKUB after a 10-hour shift on Nov 18, 2026, and started using it the nex
 
 | | Days | Online | Of which active | Trips | Earnings | Per online hour | Per active hour | Per trip |
 |---|---|---|---|---|---|---|---|---|
-| Before FKUB | Nov 17–18 | 12 h 48 min | 12 h 24 min | 41 | CA$211.40 | **CA$16.5** | CA$17.0 | CA$5.16 |
-| With FKUB | Nov 19–24 (5 days driven) | 20 h 19 min | 14 h 10 min | 51 | CA$450.10 | **CA$22.2** (+34%) | CA$31.8 (+86%) | CA$8.83 (+71%) |
+| Before FKUB | Nov 17–18 | 12 h 48 min | 12 h 24 min | 41 | CA$211.40 | **CA$16.5** | **CA$17.0** | CA$5.16 |
+| With FKUB | Nov 19–24 (5 days driven) | 20 h 19 min | 14 h 10 min | 51 | CA$450.10 | **CA$22.2** (+34%) | **CA$31.8** (+86%) | CA$8.83 (+71%) |
 
-The figures are from the Earnings page of the Uber Driver app: total earnings including tips, before fuel and other vehicle costs. **Per online hour** counts the time spent waiting for offers too, so it is the fairer comparison; **per active hour** counts only the time on a trip. With FKUB I declined more offers, so I waited more (active time fell from 97% to 70% of online time) and took fewer trips per hour (3.2 → 2.5), but each trip paid more and the car covered far fewer low-paid kilometres.
+The figures are from the Earnings page of the Uber Driver app: total earnings including tips, before fuel and other vehicle costs. Both hourly figures matter:
+
+- **Per online hour (+34%)** counts the time spent waiting for offers too. It is what the shift as a whole paid.
+- **Per active hour (+86%)** counts only the time on a trip, which is when the car is moving and burning fuel. To earn CA$100 I was on trips for about 5.9 hours before and 3.1 hours with FKUB: less driving and less fuel for the same money, and an easier shift.
+
+With FKUB I declined more offers, so I waited more (active time fell from 97% to 70% of online time) and took fewer trips per hour (3.2 → 2.5), but each trip paid more.
 
 **Read this as one driver's week, not as a promise.** It is two days against five, in one city, on different weekdays and hours, with no control for demand, weather, promotions or tips. FKUB doesn't change what Uber offers; it only makes it quick to see which offers meet the standard you set yourself. Your numbers will differ.
 
