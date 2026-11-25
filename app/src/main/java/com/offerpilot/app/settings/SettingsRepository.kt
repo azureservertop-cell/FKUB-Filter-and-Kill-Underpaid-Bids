@@ -40,13 +40,11 @@ class SettingsRepository(private val context: Context) {
         val shopPerItem = doublePreferencesKey("shop_minutes_per_item")
         val shopUnits = booleanPreferencesKey("shop_count_units")
         val monitoring = booleanPreferencesKey("monitoring_enabled")
-        val tts = booleanPreferencesKey("tts_enabled")
         val sound = booleanPreferencesKey("sound_enabled")
         val vibration = booleanPreferencesKey("vibration_enabled")
         val overlay = booleanPreferencesKey("overlay_enabled")
         val ocr = booleanPreferencesKey("ocr_enabled")
         val glow = booleanPreferencesKey("edge_glow_enabled")
-        val volume = floatPreferencesKey("tts_volume")
         val overlayPos = stringPreferencesKey("overlay_position")
         val overlaySec = intPreferencesKey("overlay_seconds")
         val overlayUntilGone = booleanPreferencesKey("overlay_until_gone")
@@ -113,7 +111,6 @@ class SettingsRepository(private val context: Context) {
                 error = this[K.fuelError]?.ifEmpty { null },
             ),
             monitoringEnabled = this[K.monitoring] ?: d.monitoringEnabled,
-            ttsEnabled = this[K.tts] ?: d.ttsEnabled,
             soundEnabled = this[K.sound] ?: d.soundEnabled,
             tierSounds = SOUND_TIERS.associateWith { v ->
                 val def = DEFAULT_TIER_SOUNDS.getValue(v)
@@ -127,7 +124,6 @@ class SettingsRepository(private val context: Context) {
             overlayEnabled = this[K.overlay] ?: d.overlayEnabled,
             ocrEnabled = this[K.ocr] ?: d.ocrEnabled,
             edgeGlowEnabled = this[K.glow] ?: d.edgeGlowEnabled,
-            ttsVolume = this[K.volume] ?: d.ttsVolume,
             overlayPosition = this[K.overlayPos]?.let { runCatching { OverlayPosition.valueOf(it) }.getOrNull() } ?: d.overlayPosition,
             overlaySeconds = this[K.overlaySec] ?: d.overlaySeconds,
             overlayUntilGone = this[K.overlayUntilGone] ?: d.overlayUntilGone,
@@ -170,7 +166,6 @@ class SettingsRepository(private val context: Context) {
             p[K.shopPerItem] = e.shopMinutesPerItem
             p[K.shopUnits] = e.shopCountUnits
             p[K.monitoring] = n.monitoringEnabled
-            p[K.tts] = n.ttsEnabled
             p[K.sound] = n.soundEnabled
             for ((v, t) in n.tierSounds) {
                 p[booleanPreferencesKey("sound_${v.name}_on")] = t.enabled
@@ -181,7 +176,6 @@ class SettingsRepository(private val context: Context) {
             p[K.overlay] = n.overlayEnabled
             p[K.ocr] = n.ocrEnabled
             p[K.glow] = n.edgeGlowEnabled
-            p[K.volume] = n.ttsVolume
             p[K.overlayPos] = n.overlayPosition.name
             p[K.overlaySec] = n.overlaySeconds
             p[K.overlayUntilGone] = n.overlayUntilGone

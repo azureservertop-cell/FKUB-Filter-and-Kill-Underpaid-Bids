@@ -7,7 +7,7 @@ import com.offerpilot.core.model.Verdict
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** Short overlay and speech texts (PRD 5.2 / 5.3). Addresses are never read aloud. */
+/** Short overlay texts (PRD 5.2). Addresses are never shown. */
 object OfferMessages {
 
     /**
@@ -20,23 +20,6 @@ object OfferMessages {
         val v = h.roundToInt()
         val prefix = lang.t("Net", "净")
         return town + if (v < 0) "$prefix -$" + (-v) + "/h" else "$prefix $" + v + "/h"
-    }
-
-    /** EN: "9 dollars, 30 kilometres, below target." ZH: "9块，30公里，不达标。" Unknown: "Offer details incomplete." */
-    fun speech(offer: DeliveryOffer, result: EvaluationResult, lang: Lang = Lang.EN, outOfTown: String? = null): String {
-        val town = outOfTown?.let { lang.t(" Out of town to $it, watch the empty return.", "跨城单，去$it，注意空驶回程。") } ?: ""
-        return speechCore(offer, result, lang) + town
-    }
-
-    private fun speechCore(offer: DeliveryOffer, result: EvaluationResult, lang: Lang): String {
-        if (result.verdict == Verdict.UNKNOWN) return Verdict.UNKNOWN.speech(lang) + lang.t(".", "。")
-        val p = offer.estimatedPayout!!.roundToInt()
-        val k = offer.distanceKm!!.roundToInt()
-        val word = result.verdict.speech(lang)
-        return when (lang) {
-            Lang.ZH -> "${p}块，${k}公里，$word。"
-            Lang.EN -> "$p ${if (p == 1) "dollar" else "dollars"}, $k ${if (k == 1) "kilometre" else "kilometres"}, $word."
-        }
     }
 
     /** Detailed explanation for the home and mock pages. */

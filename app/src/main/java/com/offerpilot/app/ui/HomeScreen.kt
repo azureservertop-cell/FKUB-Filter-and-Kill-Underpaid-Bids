@@ -110,9 +110,6 @@ fun HomeScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
         }
 
         Section(tr("Alerts", "辅助设置")) {
-            SwitchRow(tr("Spoken verdict", "语音播报"), s.ttsEnabled, { v -> upd { it.copy(ttsEnabled = v) } }, tr("After the sound, reads out price, distance and verdict", "音效之后读出金额、公里和结论"))
-            Text(tr("Speech volume ${(s.ttsVolume * 100).roundToInt()}%", "语音音量 ${(s.ttsVolume * 100).roundToInt()}%"))
-            Slider(value = s.ttsVolume, onValueChange = { v -> upd { it.copy(ttsVolume = v) } })
             SwitchRow(tr("Vibration", "震动"), s.vibrationEnabled, { v -> upd { it.copy(vibrationEnabled = v) } })
             SwitchRow(
                 tr("Screen edge glow", "屏幕边缘发光"), s.edgeGlowEnabled, { v -> upd { it.copy(edgeGlowEnabled = v) } },

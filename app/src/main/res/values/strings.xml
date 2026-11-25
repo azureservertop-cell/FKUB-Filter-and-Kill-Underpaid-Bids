@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">FKUB</string>
     <string name="accessibility_label">FKUB · Offer check</string>
-    <string name="accessibility_description">Reads the price, distance and time from Uber Driver offer popups, evaluates them on the device and gives advice with sound, speech and an on-screen glow. Only the target apps from settings are read; nothing is uploaded; it never taps accept or reject for you.</string>
+    <string name="accessibility_description">Reads the price, distance and time from Uber Driver offer popups, evaluates them on the device and gives advice with an on-screen glow and sound. Only the target apps from settings are read; nothing is uploaded; it never taps accept or reject for you.</string>
 </resources>

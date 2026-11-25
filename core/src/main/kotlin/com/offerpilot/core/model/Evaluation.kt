@@ -13,17 +13,14 @@ import com.offerpilot.core.i18n.Lang
 enum class Verdict(
     private val labelEn: String,
     private val labelZh: String,
-    private val speechEn: String,
-    private val speechZh: String,
 ) {
-    LOSS("Below target", "不达标", "below target", "不达标"),
-    MIN_WAGE("Meets target", "刚好达标", "meets target", "刚好达标"),
-    GOOD("Good pay", "比较赚", "good pay", "比较赚"),
-    GREAT("Must take", "无脑接", "must take", "无脑接"),
-    UNKNOWN("Unknown", "无法判断", "Offer details incomplete", "订单信息不完整");
+    LOSS("Below target", "不达标"),
+    MIN_WAGE("Meets target", "刚好达标"),
+    GOOD("Good pay", "比较赚"),
+    GREAT("Must take", "无脑接"),
+    UNKNOWN("Unknown", "无法判断");
 
     fun label(lang: Lang = Lang.EN): String = lang.t(labelEn, labelZh)
-    fun speech(lang: Lang = Lang.EN): String = lang.t(speechEn, speechZh)
 }
 
 /** Why no verdict could be given. */

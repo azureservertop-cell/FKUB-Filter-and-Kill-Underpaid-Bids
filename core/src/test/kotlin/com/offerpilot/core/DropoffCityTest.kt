@@ -101,8 +101,6 @@ class DropoffCityTest {
         val o = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(s)).offer
         val r = OfferEvaluator().evaluate(o)
         assertTrue(OfferMessages.overlay(o, r, Lang.EN, "St Thomas").startsWith("⚠ St Thomas · Net "))
-        assertTrue(OfferMessages.speech(o, r, Lang.EN, "St Thomas").endsWith(" Out of town to St Thomas, watch the empty return."))
-        assertTrue(OfferMessages.speech(o, r, Lang.ZH, "St Thomas").endsWith("跨城单，去St Thomas，注意空驶回程。"))
         assertEquals(OfferMessages.overlay(o, r, Lang.EN), OfferMessages.overlay(o, r, Lang.EN, null))
     }
 }

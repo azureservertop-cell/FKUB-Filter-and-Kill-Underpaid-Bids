@@ -48,12 +48,11 @@ val DEFAULT_TIER_SOUNDS: Map<Verdict, TierSound> = mapOf(
 /** All user settings (persisted locally in DataStore). */
 data class AppSettings(
     val evaluator: EvaluatorSettings = EvaluatorSettings(),
-    /** App, overlay and speech language. English by default. */
+    /** App and overlay language. English by default. */
     val language: Lang = Lang.EN,
     val fuel: FuelSettings = FuelSettings(),
     /** Master switch: when paused the service stays connected but doesn't recognize or alert. */
     val monitoringEnabled: Boolean = true,
-    val ttsEnabled: Boolean = true,
     /** Master switch for tier sounds: blue air horn, green coin, yellow none, red fart. */
     val soundEnabled: Boolean = true,
     /** Per-tier sound settings (custom file, volume, on/off). */
@@ -64,8 +63,6 @@ data class AppSettings(
     val edgeGlowEnabled: Boolean = true,
     /** When nodes don't contain the offer (Uber hides the popup), recognize it via accessibility screenshot + on-device OCR. */
     val ocrEnabled: Boolean = true,
-    /** 0.0–1.0 */
-    val ttsVolume: Float = 1.0f,
     val overlayPosition: OverlayPosition = OverlayPosition.TOP,
     val overlaySeconds: Int = 8,
     /** Keep the pill and glow until the offer leaves the screen instead of hiding them after [overlaySeconds]. */

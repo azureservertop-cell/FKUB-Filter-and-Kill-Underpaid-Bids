@@ -24,7 +24,6 @@ import com.offerpilot.app.feedback.SoundPlayer
 import com.offerpilot.app.overlay.OverlayController
 import com.offerpilot.app.settings.AppSettings
 import com.offerpilot.app.fuel.FuelPriceUpdater
-import com.offerpilot.app.speech.Speaker
 import com.offerpilot.core.OfferPipeline
 import com.offerpilot.core.PipelineOutput
 import com.offerpilot.core.format.OfferMessages
@@ -53,7 +52,7 @@ import java.util.concurrent.Executors
  * Offer monitoring service (PRD 2.2 / 4.4).
  *
  * Window events → throttled read of the target app's text → OfferPipeline (adapter + dedupe + evaluation)
- * → speech / overlay / vibration. Recognition, evaluation, display and actions are decoupled; the action module is a no-op.
+ * → overlay / sound / vibration. Recognition, evaluation, display and actions are decoupled; the action module is a no-op.
  *
  * Performance: events are throttled to at most one read per [READ_INTERVAL_MS]; nodes are read on a worker thread
  * with a node cap; every exception is swallowed and degrades to "no offer", never affecting Uber Driver.
@@ -95,10 +94,8 @@ class OfferMonitorService : AccessibilityService() {
     @Volatile private var settings = AppSettings()
     private lateinit var reader: NodeReader
     private lateinit var overlay: OverlayController
-    private lateinit var speaker: Speaker
     private lateinit var haptics: Haptics
     private lateinit var sounds: SoundPlayer
-    private var pendingSpeech: Runnable? = null
     private lateinit var snapshots: SnapshotStore
     private lateinit var ocr: ScreenOcr
     private val actionHandler: OfferActionHandler = NoOpOfferActionHandler
@@ -129,7 +126,6 @@ class OfferMonitorService : AccessibilityService() {
         workHandler = Handler(worker.looper)
         reader = NodeReader(this)
         overlay = OverlayController(this)
-        speaker = Speaker(this)
         haptics = Haptics(this)
         sounds = SoundPlayer(this)
         snapshots = SnapshotStore(this)
@@ -149,7 +145,6 @@ class OfferMonitorService : AccessibilityService() {
                 val old = settings
                 settings = s
                 if (::sounds.isInitialized) sounds.prepare(s.tierSounds)
-                if (::speaker.isInitialized) speaker.setLanguage(s.language)
                 workHandler.post { rebuildPipeline(s) }
                 if (old.debugMode != s.debugMode || buttonCallback == null) updateAccessibilityButton(s.debugMode)
                 if (!s.monitoringEnabled) clearOutputs()
@@ -386,7 +381,7 @@ class OfferMonitorService : AccessibilityService() {
     private val listHistoryKeys = LinkedHashSet<String>()
 
     /**
-     * Trip Radar: the driver is browsing several offers, so there is no sound, speech or glow; each complete card gets
+     * Trip Radar: the driver is browsing several offers, so there is no sound or glow; each complete card gets
      * a small badge with its estimated net hourly next to its price.
      */
     private fun showList(list: AdapterResult.OfferList, s: AppSettings) {
@@ -504,14 +499,7 @@ class OfferMonitorService : AccessibilityService() {
             )
         }
         if (out.announce) {
-            val soundMs = if (s.soundEnabled) sounds.play(out.result.verdict, s.tierSounds[out.result.verdict]) else 0L
-            if (s.ttsEnabled) {
-                val text = OfferMessages.speech(out.offer, out.result, s.language, outOfTown)
-                pendingSpeech?.let { mainHandler.removeCallbacks(it) }
-                val r = Runnable { pendingSpeech = null; speaker.speak(text, s.ttsVolume) }
-                pendingSpeech = r
-                mainHandler.postDelayed(r, soundMs) // speak after the sound finishes
-            }
+            if (s.soundEnabled) sounds.play(out.result.verdict, s.tierSounds[out.result.verdict])
             if (s.vibrationEnabled) mainHandler.post { runCatching { haptics.play(out.result.verdict) } }
         }
         actionHandler.onEvaluated(out.offer, out.result) // no-op: v1 never performs any action
@@ -536,7 +524,7 @@ class OfferMonitorService : AccessibilityService() {
         overlay.showBand(h * topPercent / 100, h * bottomPercent / 100)
     }
 
-    /** Called from the mock page: previews a mock offer with the real overlay / speech / vibration. */
+    /** Called from the mock page: previews a mock offer with the real overlay / sound / vibration. */
     fun preview(offer: DeliveryOffer, result: EvaluationResult) {
         present(PipelineOutput.Show(offer, result, announce = true), settings)
     }
@@ -545,9 +533,6 @@ class OfferMonitorService : AccessibilityService() {
         if (!::overlay.isInitialized) return
         overlay.hide()
         overlay.hideCards()
-        pendingSpeech?.let { mainHandler.removeCallbacks(it) }
-        pendingSpeech = null
-        speaker.stop()
         sounds.stop()
     }
 
@@ -706,7 +691,6 @@ class OfferMonitorService : AccessibilityService() {
         clearOutputs()
         if (::overlay.isInitialized) overlay.hideBadge()
         MonitorState.update { it.copy(recording = null) }
-        if (::speaker.isInitialized) speaker.shutdown()
         if (::sounds.isInitialized) runCatching { sounds.release() }
         if (::ocr.isInitialized) runCatching { ocr.close() }
         if (::worker.isInitialized) worker.quitSafely()

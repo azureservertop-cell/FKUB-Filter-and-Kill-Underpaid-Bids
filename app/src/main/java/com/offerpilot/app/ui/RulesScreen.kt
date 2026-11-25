@@ -147,8 +147,8 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
         Section(tr("Out-of-town offers", "跨城提醒")) {
             SwitchRow(
                 tr("Out-of-town alert", "跨城提醒"), e.outOfTownAlert, { v -> upd { it.copy(outOfTownAlert = v) } },
-                tr("When the city in the drop-off address isn't one of yours, the pill shows ⚠ and the city, and speech adds “watch the empty return”. Only the city name is compared, in memory, then discarded. It doesn't change the verdict.",
-                    "目的地地址里的城市不是你设置的城市时，提示条显示 ⚠ 和城市名，语音提醒“注意空驶回程”。只在内存中比对城市名，比完即丢弃，不影响档位判断。"),
+                tr("When the city in the drop-off address isn't one of yours, the pill shows ⚠ and the city, a reminder to watch the empty return. Only the city name is compared, in memory, then discarded. It doesn't change the verdict.",
+                    "目的地地址里的城市不是你设置的城市时，提示条显示 ⚠ 和城市名，提醒你注意空驶回程。只在内存中比对城市名，比完即丢弃，不影响档位判断。"),
             )
             if (e.outOfTownAlert) {
                 val sAll = s

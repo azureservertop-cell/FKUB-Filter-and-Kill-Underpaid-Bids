@@ -126,12 +126,11 @@ fun MockOfferScreen(s: AppSettings, modifier: Modifier) {
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.background(verdictColor(r.verdict), RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                Text(tr("Speech: ", "语音：") + OfferMessages.speech(offer, r, lang))
                 Text(OfferMessages.detail(offer, r, lang), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = { OfferMonitorService.instance?.preview(offer, r) },
                     enabled = status.serviceConnected,
-                ) { Text(if (status.serviceConnected) tr("Preview with overlay + speech", "用悬浮层 + 语音预览") else tr("Turn on the accessibility service to preview the overlay", "开启无障碍服务后可预览悬浮层")) }
+                ) { Text(if (status.serviceConnected) tr("Preview with overlay", "用悬浮层预览") else tr("Turn on the accessibility service to preview the overlay", "开启无障碍服务后可预览悬浮层")) }
             }
         }
     }

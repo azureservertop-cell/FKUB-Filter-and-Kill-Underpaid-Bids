@@ -7,9 +7,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
         <!-- Lists launchable apps so the user can pick which app to watch (no QUERY_ALL_PACKAGES needed). -->
         <intent>
             <action android:name="android.intent.action.MAIN" />

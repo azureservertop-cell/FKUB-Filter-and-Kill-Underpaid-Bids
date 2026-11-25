@@ -9,7 +9,7 @@
 
 Android 11–15 (tested on Android 15) · Kotlin · Jetpack Compose · no root
 
-When Uber Driver pops up a delivery offer, FKUB reads the price, distance and time, evaluates them with your rules, and answers with a **coloured glow around the screen edge**, a small pill showing the estimated net hourly, a tier sound, an optional spoken verdict and vibration, all before the offer disappears.
+When Uber Driver pops up a delivery offer, FKUB reads the price, distance and time, evaluates them with your rules, and answers with a **coloured glow around the screen edge**, a small pill showing the estimated net hourly, a tier sound and vibration, all before the offer disappears.
 
 > **Recognition and advice only. It never taps anything.** There is no auto-accept or auto-reject, and the accessibility config declares no gesture capability. Everything is computed on the device. The only network use is downloading public regional fuel prices in Auto fuel-price mode; offers and screenshots never leave the phone.
 
@@ -21,7 +21,7 @@ On your phone open **Releases → latest** and download [`FKUB-debug.apk`](https
 2. Open FKUB, read the first-run notice (what it reads, that it never taps or uploads) and agree. Then **Status** → **Choose app** and pick the delivery app you drive with (e.g. Uber Driver). Nothing is read until you pick one.
 3. **Status** → **Open accessibility settings** → turn on **FKUB**.
    - On Android 13+ a sideloaded app's switch may be greyed out: Settings → Apps → FKUB → ⋮ (top right) → **Allow restricted settings**, then turn it on again.
-4. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI, overlay and speech to Chinese.
+4. The app is in English by default. Tap **中文** at the top of the Status page to switch the UI and overlay to Chinese.
 
 ## Before and after: the author's own numbers
 
@@ -59,7 +59,7 @@ flowchart LR
     D --> E
     E --> F[OfferTracker<br/>dedupe · settle · withdraw]
     F --> G[OfferEvaluator<br/>your costs + target $/h]
-    G --> H[Edge glow · pill · sound<br/>speech · vibration]
+    G --> H[Edge glow · pill · sound<br/>vibration]
 ```
 
 ### Reading offers
@@ -77,7 +77,7 @@ This works with Uber in the foreground and when Uber pops an offer over another 
 
 **One card, one answer.** While a card stays on screen it is read again about every 0.8 s. A single pass that misses it doesn't hide the result, and for the same price and distance the longer time and the city already read are kept, so the verdict doesn't flip. The glow and pill stay until the offer is gone (or for a fixed number of seconds, if you prefer).
 
-**Trip Radar.** On Uber's Trip Radar list, where several offers are stacked, each card is judged on its own and gets a small coloured badge with its estimated net hourly next to its price. The badges disappear while you scroll and come back at the new positions once the list stops (about a second with OCR). There is no sound, speech or glow on the list, since you are browsing rather than receiving an offer. FKUB does not try to get around Uber hiding its UI.
+**Trip Radar.** On Uber's Trip Radar list, where several offers are stacked, each card is judged on its own and gets a small coloured badge with its estimated net hourly next to its price. The badges disappear while you scroll and come back at the new positions once the list stops (about a second with OCR). There is no sound or glow on the list, since you are browsing rather than receiving an offer. FKUB does not try to get around Uber hiding its UI.
 
 ## Rules (default)
 
@@ -117,7 +117,7 @@ These are your personal filter rules, not Uber's pay standard. Minimum-earnings 
 
 **Shop orders** (on by default, Rules tab): Uber's time for a Shop order doesn't include picking the items, so when the card shows "N items", N × 1.5 min (adjustable) is added (N = items, i.e. different products; you can switch to units, e.g. "22 items (30 units)") to the time before judging. Verified on a real "Shop & Deliver" card ("8 items (8 units)"; the item count is used). If the item count isn't read, the offer is judged on Uber's time alone.
 
-**Out-of-town alert** (on by default, Rules tab): when the city in the drop-off address (e.g. `Sunset Rd, St Thomas`) isn't one of your cities, the pill shows `⚠ St Thomas · Net $17/h` and speech adds "Out of town to St Thomas, watch the empty return." Only whole city names are compared, never streets, neighbourhoods or postal codes. Your cities default to the fuel-price city; add nearby towns you're happy with, e.g. `London, Thamesford`. If the card shows no city, there's no alert. By default it doesn't change the verdict; turn on **Count the drive back** to multiply an out-of-town offer's distance and time by a return multiplier (default 1.5, i.e. the trip plus half again for the empty drive back) before judging it.
+**Out-of-town alert** (on by default, Rules tab): when the city in the drop-off address (e.g. `Sunset Rd, St Thomas`) isn't one of your cities, the pill shows `⚠ St Thomas · Net $17/h`, a reminder to watch the empty return. Only whole city names are compared, never streets, neighbourhoods or postal codes. Your cities default to the fuel-price city; add nearby towns you're happy with, e.g. `London, Thamesford`. If the card shows no city, there's no alert. By default it doesn't change the verdict; turn on **Count the drive back** to multiply an out-of-town offer's distance and time by a return multiplier (default 1.5, i.e. the trip plus half again for the empty drive back) before judging it.
 
 | Tier | Edge glow | Sound (built-in) | Vibration |
 |---|---|---|---|
@@ -130,10 +130,10 @@ The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's soun
 
 ## App tabs
 
-- **Status**: language, app to watch (picked from your installed apps), OCR reading area (e.g. only the lower part of the screen, shown on the real screen while you adjust it), service state, last recognition, speech / vibration / glow / pill / OCR / debug switches, sounds.
+- **Status**: language, app to watch (picked from your installed apps), OCR reading area (e.g. only the lower part of the screen, shown on the real screen while you adjust it), service state, last recognition, vibration / glow / pill / OCR / debug switches, sounds.
 - **Rules**: car costs, target earnings, tier thresholds, price table, simple-rule mode.
 - **Stats**: a log of every offer FKUB read (time, shown price, km, minutes, whether it was an Accept or Match offer, and a Shop order's item counts), re-judged with your current rules: this week's share of offers below your own standard (vs last week), Accept vs Match comparison (count, median price, $/km, net hourly and share meeting your standard for direct offers vs Trip Radar offers), tier split, price vs distance scatter, net-hourly histogram, offers by hour of day and a recent list, for today / 7 days / 30 days / all. Logging is on by default and can be switched off, cleared or exported as CSV.
-- **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay and speech when the service is on.
+- **Mock**: test the rules without Uber (spec cases A/B/C) or paste screen text to test the adapter; previews the real overlay when the service is on.
 - **Debug** (developer only: tap the version number at the bottom of Status 7 times): target package, continuous capture (one tap to start, one to stop, zipped for sharing, with a `trace.txt` of every read and why a result was or wasn't shown), single snapshots, capture list.
 
 ## Architecture
@@ -147,7 +147,7 @@ core/   pure Kotlin/JVM, no Android dependency, unit-tested
   tracking/  OfferTracker (dedupe, settle time for incomplete offers, withdraw when gone)
   fuel/      FuelPriceCsv (public fuel-price data parsing)
   stats/     OfferRecord, OfferStats (history re-evaluated with the current rules)
-  format/    OfferMessages (pill / speech / detail text, English + Chinese)
+  format/    OfferMessages (pill / detail text, English + Chinese)
   i18n/      Lang
   OfferPipeline  recognize → track → evaluate
 
@@ -156,7 +156,6 @@ app/    Android
   capture/        ScreenOcr (accessibility screenshot + ML Kit)
   overlay/        OverlayController, EdgeGlowView (TYPE_ACCESSIBILITY_OVERLAY, not touchable)
   feedback/       SoundPlayer, Haptics
-  speech/         Speaker (TextToSpeech on the navigation-guidance channel)
   settings/       AppSettings, SettingsRepository (DataStore)
   debug/          SnapshotStore
   history/        OfferHistory (offer log CSV in app-private storage)
@@ -170,7 +169,7 @@ app/    Android
 
 - Only windows of the app(s) you picked are read (none until you pick one); other apps are seen by package name only, to notice that you left Uber. OCR captures only Uber's window.
 - Missing price / distance / time, indistinguishable candidates, several accept buttons, implausible values (≤ 0, huge, average speed > 130 km/h), confidence < 0.6 or data older than 30 s → **unknown**.
-- When the popup disappears or you switch apps, the glow and pill are removed and speech stops (within about two reads when the card was read by OCR).
+- When the popup disappears or you switch apps, the glow and pill are removed (within about two reads when the card was read by OCR).
 - The same offer isn't announced twice within 20 s; incomplete offers get 0.7 s to fill in before "incomplete" is reported.
 - A screen only counts as an offer if it has the **Accept** button or the "estimated tip" label, so Uber's trip history and earnings pages (which also show prices, km and minutes) are ignored. A window that keeps showing no offer is OCR'd at most every 2 s, and only while the screen is changing; an unreadable window that may belong to another app, at most every 15 s.
 - Events are throttled (≤ 1 read per 150 ms), nodes are read on a worker thread with a 1500-node cap, OCR runs at most every 0.8 s, and every error degrades to "no offer" without affecting Uber Driver.
