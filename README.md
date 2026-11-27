@@ -123,7 +123,7 @@ These are your personal filter rules, not Uber's pay standard. Minimum-earnings 
 |---|---|---|---|
 | 🔵 must take | blue | meme air horn | three pulses |
 | 🟢 good pay | green | coin | one pulse |
-| 🟡 meets target | yellow | a voice saying "Okay" | two pulses |
+| 🟡 meets target | yellow | a voice saying "Ready" | two pulses |
 | 🔴 below target | red | wet fart | one long |
 
 The pill shows only the estimated net hourly, e.g. `Net $17/h`. Each tier's sound can be turned off, given its own volume, previewed or replaced with your own audio file. Built-in clips come from free asset packs, see [SOUND_CREDITS.md](SOUND_CREDITS.md).

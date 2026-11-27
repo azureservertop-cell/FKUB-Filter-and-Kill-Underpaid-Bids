@@ -37,7 +37,7 @@ class SoundPlayer(private val context: Context) {
         pool.setOnLoadCompleteListener { _, id, status -> if (status == 0) synchronized(loaded) { loaded += id } }
         builtin[Verdict.GREAT] = pool.load(context, R.raw.sfx_horn, 1) to 1100L
         builtin[Verdict.GOOD] = pool.load(context, R.raw.sfx_coin, 1) to 550L
-        builtin[Verdict.MIN_WAGE] = pool.load(context, R.raw.sfx_ok, 1) to 550L
+        builtin[Verdict.MIN_WAGE] = pool.load(context, R.raw.sfx_ready, 1) to 600L
         builtin[Verdict.LOSS] = pool.load(context, R.raw.sfx_poop, 1) to 1700L
     }
 

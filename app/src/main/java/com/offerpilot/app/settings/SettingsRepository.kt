@@ -116,7 +116,7 @@ class SettingsRepository(private val context: Context) {
             tierSounds = SOUND_TIERS.associateWith { v ->
                 val def = DEFAULT_TIER_SOUNDS.getValue(v)
                 TierSound(
-                    // Yellow had no built-in sound before the "OK" clip, so its switch was saved as off on every install:
+                    // Yellow had no built-in sound before the "Ready" clip, so its switch was saved as off on every install:
                     // ignore that saved value once.
                     enabled = if (v == com.offerpilot.core.model.Verdict.MIN_WAGE && this[K.yellowSoundSeen] != true) def.enabled
                     else this[booleanPreferencesKey("sound_${v.name}_on")] ?: def.enabled,
