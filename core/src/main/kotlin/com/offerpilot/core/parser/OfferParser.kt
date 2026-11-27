@@ -112,6 +112,12 @@ object OfferParser {
      * Returns (repaired text, whether anything was repaired). Lines that aren't a standalone amount are returned unchanged.
      */
     fun repairOcrPriceLine(line: String): Pair<String, Boolean> {
+        // Add-on offers (an extra order on the current trip) show increments: "+CA$1.64", "+ 28 min (+ 7.4 km) total".
+        ADD_ON_PRICE.find(line)?.let { plus ->
+            val rest = line.substring(plus.range.last + 1)
+            val (fixed, changed) = repairOcrPriceLine(rest)
+            return if (changed) fixed to true else line to false
+        }
         // Letters OCR often confuses with digits ("CA$25.O7"), only after a leading currency symbol.
         val lookalikes = OCR_PRICE_PREFIX.find(line)?.let { p ->
             line.substring(0, p.range.last + 1) + line.substring(p.range.last + 1).map { DIGIT_LOOKALIKES[it] ?: it }.joinToString("")
@@ -137,6 +143,7 @@ object OfferParser {
         return out to (out != original && !(original.endsWith(fixed) && symbol == '$' && cents.isEmpty() && whole.length < 3))
     }
 
+    private val ADD_ON_PRICE = Regex("""^\s*\+\s*(?=(?:CA|C|CAD)?\s?[${'$'}S]\s?[\dOoIl|])""", RegexOption.IGNORE_CASE)
     private val OCR_PRICE_PREFIX = Regex("""^\s*(CA|C|CAD)?\s?[${'$'}]\s?(?=[\dOoIl|])""", RegexOption.IGNORE_CASE)
     private val DIGIT_LOOKALIKES = mapOf('O' to '0', 'o' to '0', 'I' to '1', 'l' to '1', '|' to '1')
 

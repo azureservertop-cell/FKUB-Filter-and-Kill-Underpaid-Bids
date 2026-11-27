@@ -492,3 +492,28 @@ class Debug1124Test {
         }
     }
 }
+
+/** Add-on offers (an extra order while on a trip) show increments with a "+" (real device, 2026-11-26). */
+class AddOnOfferTest {
+    private fun read(vararg lines: String) = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(
+        ScreenText(UBER, lines.map { TextNode(it) }, 1_000L, OfferSource.OCR))).offer
+
+    @Test fun plus_price_with_letter_and_lost_point() {
+        val o = read("Shop & Deliver", "+CA\$l64", "including estimated tip", "Must verify ID", "Exclusive", "+2 items (3 units)",
+            "Same Store", "O + 28 min (+ 7.4 km) total", "X", "Huron St & King's Highway 4, London", "Accept")
+        assertEquals(1.64, o.estimatedPayout); assertEquals(7.4, o.distanceKm); assertEquals(28.0, o.durationMinutes)
+        assertEquals(2, o.shopItems)
+        assertTrue(OfferEvaluator().evaluate(o).isConclusive)
+    }
+
+    @Test fun plus_price_lost_point() {
+        val o = read("Shop & Deliver Exclusive", "+ CA$703", "including estimated tip", "+2 items (2 units)",
+            ") +17 min (+ 1.6 km) total", "Dollarama (Oxbury Mall)", "Accept", "St James St & William St, London", "X")
+        assertEquals(7.03, o.estimatedPayout); assertEquals(1.6, o.distanceKm); assertEquals(17.0, o.durationMinutes)
+    }
+
+    @Test fun plus_price_read_correctly() {
+        val o = read("Delivery", "+CA$3.25", "including estimated tip", "+ 9 min (+ 2.1 km) total", "Accept")
+        assertEquals(3.25, o.estimatedPayout); assertEquals(2.1, o.distanceKm); assertEquals(9.0, o.durationMinutes)
+    }
+}
