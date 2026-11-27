@@ -179,6 +179,14 @@ class UberDriverAdapter(
             minutes == null -> issues += ParseIssue.DURATION_AMBIGUOUS
         }
 
+        // "1 hr 17 min (25.8 km)" read as "17 min (25.8 km)": the speed gives it away (25.8 km in 17 min is 91 km/h).
+        // Uber writes anything from 60 minutes up with hours, so put the hour back when that makes the trip possible.
+        val m0 = minutes
+        if (km != null && m0 != null && m0 > 0 && m0 < 60 && km / (m0 / 60.0) > LOST_HOUR_SPEED_KMH && km / ((m0 + 60) / 60.0) <= LOST_HOUR_SPEED_KMH) {
+            minutes = m0 + 60
+            confidence -= 0.05f
+        }
+
         if (!verified) issues += ParseIssue.ADAPTER_UNVERIFIED
 
         val dropoffCity = if (!config.readDropoffCity) null else runCatching {
@@ -280,27 +288,40 @@ class UberDriverAdapter(
      * reads as a 10-minute trip, so put a lone hours piece back in front of the text to its right on the same row.
      */
     private fun joinSplitHours(nodes: List<TextNode>): List<TextNode> {
-        val hours = nodes.filter { n -> n.bounds != null && LONE_HOURS.matches(n.text) }
+        val hours = nodes.filter { n -> LONE_HOURS.matches(n.text) }
         if (hours.isEmpty()) return nodes
         val out = nodes.toMutableList()
         for (h in hours) {
-            val hb = h.bounds!!
-            val right = out.filter { n ->
+            // "(O l hr" → "1 hr": drop the clock icon and read l / I / | as 1
+            val hText = LONE_HOURS.matchEntire(h.text)!!.groupValues[1].let { if (it[0].isDigit()) it else "1" } + " hr"
+            val hb = h.bounds
+            val right = if (hb == null) null else out.filter { n ->
                 val b = n.bounds ?: return@filter false
                 n !== h && b.left >= hb.right - hb.height / 2 && b.left - hb.right <= hb.height * 2 &&
                     minOf(b.bottom, hb.bottom) - maxOf(b.top, hb.top) >= minOf(b.height, hb.height) / 2
-            }.minByOrNull { it.bounds!!.left } ?: continue
-            val rb = right.bounds!!
-            val i = out.indexOf(right)
-            out[i] = right.copy(text = h.text.trim() + " " + right.text,
-                bounds = Box(hb.left, minOf(hb.top, rb.top), rb.right, maxOf(hb.bottom, rb.bottom)))
+            }.minByOrNull { it.bounds!!.left }
+            // No neighbour by position (or no positions at all): a card has one trip line, so the hour belongs to the only
+            // piece that has minutes and a distance but no hour of its own.
+            val target = right ?: out.filter { n ->
+                n !== h && TRIP_REST.containsMatchIn(n.text) && !HAS_HOURS.containsMatchIn(n.text)
+            }.singleOrNull() ?: continue
+            val i = out.indexOf(target)
+            val tb = target.bounds
+            out[i] = target.copy(text = hText + " " + target.text.replace(LEADING_ICON, ""),
+                bounds = if (hb != null && tb != null) Box(minOf(hb.left, tb.left), minOf(hb.top, tb.top), maxOf(hb.right, tb.right), maxOf(hb.bottom, tb.bottom)) else tb)
             out.remove(h)
         }
         return out
     }
 
     companion object {
-        private val LONE_HOURS = Regex("""^\s*\d{1,2}\s?(?:h|hr|hrs|hour|hours)\s*$""", RegexOption.IGNORE_CASE)
+        /** "1 hr" on its own, possibly with the clock icon read as "O" / "9" / "()" in front and "1" read as l / I / |. */
+        private val LONE_HOURS = Regex("""^[^A-Za-z0-9]*(?:[O09]\s+)?[^A-Za-z0-9]*(\d{1,2}|[lI|])\s?(?:h|hr|hrs|hour|hours)[^A-Za-z0-9]*$""")
+        private val TRIP_REST = Regex("""\d\s?mins?\b.*\d\s?km\b""", RegexOption.IGNORE_CASE)
+        private val HAS_HOURS = Regex("""[\dlI|]\s?(?:h|hr|hrs|hour|hours)\b""")
+        private val LEADING_ICON = Regex("""^[^A-Za-z0-9]*(?:[O09]\s+)?[^A-Za-z0-9]*(?=\d)""")
+        /** Real offers average under about 50 km/h door to door; above this the "1 hr" in front of the minutes was lost. */
+        private const val LOST_HOUR_SPEED_KMH = 60.0
         private val ITEMS = Regex("""(?i)\b(\d{1,3})\s*(?:items?|件)""")
         private val ONE_ITEM = Regex("""(?<![A-Za-z0-9])[lI|]\s?item\b""")
         private val UNITS = Regex("""(?i)\b(\d{1,3})\s*units?\b""")

@@ -517,3 +517,35 @@ class AddOnOfferTest {
         assertEquals(3.25, o.estimatedPayout); assertEquals(2.1, o.distanceKm); assertEquals(9.0, o.durationMinutes)
     }
 }
+
+/** "1 hr 17 min": the hour must not get lost (user report 2026-11-27; four such reads in the offer log). */
+class LostHourTest {
+    private fun read(vararg lines: String) = assertIs<AdapterResult.Offer>(UberDriverAdapter().extract(
+        ScreenText(UBER, lines.map { TextNode(it) }, 1_000L, OfferSource.OCR))).offer
+
+    @Test fun hour_in_its_own_piece_without_positions() {
+        for (h in listOf("1 hr", "l hr", "(O 1 hr", "() l hr", "9 1 hr", "1hr")) {
+            val o = read("Delivery", "CA$29.09", "including estimated tip", h, "17 min (25.8 km) total", "Sunset Rd, St Thomas", "Accept")
+            assertEquals(77.0, o.durationMinutes, h); assertEquals(25.8, o.distanceKm)
+        }
+    }
+
+    @Test fun hour_misread_inside_the_line() {
+        for (l in listOf("1 nr 17 min (25.8 km) total", "(O l hr 17 min (25.8 km) total", "1hr17 min (25.8 km) total", "1 hn 17 min (25.8 km) total"))
+            assertEquals(77.0, read("CA$29.09", "including estimated tip", l, "Accept").durationMinutes, l)
+    }
+
+    @Test fun hour_missing_altogether_is_put_back_by_speed() {
+        // from the offer log: 19.3 km in "10 min", 13.5 km in "6 min", 25.8 km in "10 min"
+        assertEquals(70.0, read("CA$32.72", "including estimated tip", "10 min (19.3 km) total", "Accept").durationMinutes)
+        assertEquals(66.0, read("CA$17.40", "including estimated tip", "6 min (13.5 km) total", "Accept").durationMinutes)
+        assertEquals(70.0, read("CA$29.09", "including estimated tip", "10 min (25.8 km) total", "Accept").durationMinutes)
+    }
+
+    @Test fun ordinary_trips_keep_their_minutes() {
+        assertEquals(30.0, read("CA$11.53", "including estimated tip", "30 min (21.1 km) total", "Match").durationMinutes)
+        assertEquals(42.0, read("CA$13.01", "including estimated tip", "42 min (35.4 km) total", "Accept").durationMinutes)
+        assertEquals(4.0, read("CA$19.04", "including estimated tip", "4 min (3.2 km) total", "Accept").durationMinutes)
+        assertEquals(62.0, read("CA$22.07", "including estimated tip", "(9 lhr 2 min (32.6 km) total", "Match").durationMinutes)
+    }
+}

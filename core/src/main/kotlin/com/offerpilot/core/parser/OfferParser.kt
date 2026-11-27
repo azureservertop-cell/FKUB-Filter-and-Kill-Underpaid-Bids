@@ -170,6 +170,7 @@ object OfferParser {
         s = LOOKALIKE_BEFORE_UNIT.replace(s, "1")
         s = LOOKALIKE_IN_NUMBER.replace(s) { m -> if (m.value in "Oo") "0" else "1" }
         s = s.replace(Regex("""(?<=\d)\s?[nrm]min\b"""), " min") // "49 nmin"
+        s = s.replace(Regex("""(?<=[\dlI|])\s?(?:nr|hn|br|hc|ht)(?=\s?\d{1,2}\s?min\b)"""), " hr") // "1 nr 17 min"
         s = METRES_FOR_KM.replace(s) { m -> m.groupValues[1] + " km)" }
         s = GLUED_MINUTES.replace(s) { m -> if ((m.groupValues[1] + m.groupValues[2]).toInt() >= 60) m.groupValues[2] else m.value }
         s = INTEGER_KM.replace(s) { m -> m.groupValues[1].dropLast(1) + "." + m.groupValues[1].takeLast(1) + m.groupValues[2] }
