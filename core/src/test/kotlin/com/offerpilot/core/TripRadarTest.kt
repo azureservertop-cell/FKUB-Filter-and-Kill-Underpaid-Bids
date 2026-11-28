@@ -159,7 +159,7 @@ class ShopOrderTest {
         ))).offer
         assertEquals(12, o.shopItems)
         val ev = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings())
-        assertEquals(43.0, ev.withShopTime(o).durationMinutes)
+        assertEquals(31.0, ev.withShopTime(o).durationMinutes)
         val off = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(shopTimeEnabled = false))
         assertTrue(ev.evaluate(o).netHourly!! < off.evaluate(o).netHourly!!)
     }
@@ -198,7 +198,7 @@ class RealShopCardTest {
         assertEquals("London", o.dropoffCity)
         assertEquals(com.offerpilot.core.model.OfferKind.MATCH, o.kind)
         val r = OfferEvaluator().evaluate(o)
-        assertEquals(9, r.netHourly!!.toInt()) // 63 min: 49 + 8 × 1.5 min shopping + 2 min waiting
+        assertEquals(11, r.netHourly!!.toInt()) // 55 min: 49 + 8 × 0.5 min shopping + 2 min waiting
     }
 }
 
@@ -270,9 +270,9 @@ class RealCards1122Test {
         assertEquals(22, o.shopItems); assertEquals(30, o.shopUnits)
         assertEquals("Toronto", o.dropoffCity)
         assertEquals(com.offerpilot.core.model.OfferKind.ACCEPT, o.kind)
-        assertEquals(64.0 + 22 * 1.5 + 2, OfferEvaluator().withExtraTime(o).durationMinutes)
+        assertEquals(64.0 + 22 * 0.5 + 2, OfferEvaluator().withExtraTime(o).durationMinutes)
         val units = OfferEvaluator(com.offerpilot.core.rules.EvaluatorSettings(shopCountUnits = true))
-        assertEquals(64.0 + 30 * 1.5 + 2, units.withExtraTime(o).durationMinutes)
+        assertEquals(64.0 + 30 * 0.5 + 2, units.withExtraTime(o).durationMinutes)
         assertTrue(OfferEvaluator().evaluate(o).isConclusive)
     }
 

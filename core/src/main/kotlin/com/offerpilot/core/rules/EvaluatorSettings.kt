@@ -59,7 +59,7 @@ data class EvaluatorSettings(
     val pickupWaitMinutes: Double = 2.0,
     /** Shop orders: add item count × [shopMinutesPerItem] minutes of shopping to the trip time. */
     val shopTimeEnabled: Boolean = true,
-    val shopMinutesPerItem: Double = 1.5,
+    val shopMinutesPerItem: Double = 0.5,
     /**
      * Count units instead of items ("22 items (30 units)": 30 instead of 22). Items = different products, each one a
      * separate search in the store, so items is the default; units also counts several of the same product.

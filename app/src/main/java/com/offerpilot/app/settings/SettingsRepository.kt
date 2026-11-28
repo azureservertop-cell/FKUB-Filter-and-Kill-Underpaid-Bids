@@ -38,6 +38,7 @@ class SettingsRepository(private val context: Context) {
         val shopTime = booleanPreferencesKey("shop_time_enabled")
         val pickupWait = doublePreferencesKey("pickup_wait_minutes")
         val shopPerItem = doublePreferencesKey("shop_minutes_per_item")
+        val shopPerItemSeen = booleanPreferencesKey("shop_minutes_per_item_default_05_seen")
         val shopUnits = booleanPreferencesKey("shop_count_units")
         val monitoring = booleanPreferencesKey("monitoring_enabled")
         val sound = booleanPreferencesKey("sound_enabled")
@@ -96,7 +97,10 @@ class SettingsRepository(private val context: Context) {
                 returnDistanceMultiplier = this[K.returnMultiplier] ?: e.returnDistanceMultiplier,
                 shopTimeEnabled = this[K.shopTime] ?: e.shopTimeEnabled,
                 pickupWaitMinutes = this[K.pickupWait] ?: e.pickupWaitMinutes,
-                shopMinutesPerItem = this[K.shopPerItem] ?: e.shopMinutesPerItem,
+                // The default went from 1.5 to 0.5 (Uber's time already includes most of the shopping), and every install
+                // had the old default saved: replace a saved 1.5 once.
+                shopMinutesPerItem = (this[K.shopPerItem] ?: e.shopMinutesPerItem)
+                    .let { if (it == 1.5 && this[K.shopPerItemSeen] != true) e.shopMinutesPerItem else it },
                 shopCountUnits = this[K.shopUnits] ?: e.shopCountUnits,
             ),
             language = this[K.language]?.let { runCatching { Lang.valueOf(it) }.getOrNull() } ?: d.language,
@@ -168,6 +172,7 @@ class SettingsRepository(private val context: Context) {
             p[K.shopTime] = e.shopTimeEnabled
             p[K.pickupWait] = e.pickupWaitMinutes
             p[K.shopPerItem] = e.shopMinutesPerItem
+            p[K.shopPerItemSeen] = true
             p[K.shopUnits] = e.shopCountUnits
             p[K.monitoring] = n.monitoringEnabled
             p[K.sound] = n.soundEnabled

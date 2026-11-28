@@ -130,8 +130,8 @@ fun RulesScreen(s: AppSettings, repo: SettingsRepository, modifier: Modifier) {
         Section(tr("Shop orders", "Shop 购物单")) {
             SwitchRow(
                 tr("Add shopping time", "加上购物时间"), e.shopTimeEnabled, { v -> upd { it.copy(shopTimeEnabled = v) } },
-                tr("Uber's time for a Shop order doesn't include picking the items. When the card shows “N items”, N × the minutes below are added before judging.",
-                    "Uber 给 Shop 单的时间不含挑商品的时间。卡片上显示“N items”时，判断前会加上 N × 下面的分钟数。"),
+                tr("Uber's time for a Shop order already includes some shopping (about 2 min per item on the cards seen so far). When the card shows “N items”, N × the minutes below are added on top as your own margin. Set 0 to add nothing.",
+                    "Uber 给 Shop 单的时间已经含了一部分购物时间（目前见过的卡片大约每件 2 分钟）。卡片上显示“N items”时，会再加上 N × 下面的分钟数，作为你自己留的余量。设为 0 即不加。"),
             )
             if (e.shopTimeEnabled) {
                 NumberField(tr("Minutes per item", "每件商品分钟数"), e.shopMinutesPerItem,
